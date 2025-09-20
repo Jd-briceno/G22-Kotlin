@@ -10,6 +10,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.g22.orbitsoundkotlin.ui.screens.GenreSelectorScreen
 import com.g22.orbitsoundkotlin.ui.screens.HomeScreen
+import com.g22.orbitsoundkotlin.ui.screens.LibraryScreen
+import com.g22.orbitsoundkotlin.ui.screens.ProfileScreen
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 
 class MainActivity : ComponentActivity() {
@@ -23,9 +25,13 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     // VIEW 1 CARLOS PENUELA
-                    HomeScreen()
+                    //HomeScreen()
                     // VIEW 2 CARLOS PENUELA
-                    GenreSelectorScreen()
+                    //GenreSelectorScreen()
+                    // VIEW 3 SANTIAGO OSORIO
+                    // LibraryScreen()
+                    // VIEW 4 SANTIAGO OSORIO
+                    ProfileScreen()
                 }
             }
         }
