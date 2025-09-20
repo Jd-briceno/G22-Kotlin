@@ -25,13 +25,13 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     // VIEW 1 CARLOS PENUELA
-                    //HomeScreen()
+                    HomeScreen()
                     // VIEW 2 CARLOS PENUELA
                     //GenreSelectorScreen()
                     // VIEW 3 SANTIAGO OSORIO
                     // LibraryScreen()
                     // VIEW 4 SANTIAGO OSORIO
-                    ProfileScreen()
+                    //ProfileScreen()
                 }
             }
         }
