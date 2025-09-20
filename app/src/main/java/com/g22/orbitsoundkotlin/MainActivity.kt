@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.g22.orbitsoundkotlin.ui.screens.GenreSelectorScreen
 import com.g22.orbitsoundkotlin.ui.screens.HomeScreen
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 
@@ -21,7 +22,10 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    // VIEW 1 CARLOS PENUELA
                     HomeScreen()
+                    // VIEW 2 CARLOS PENUELA
+                    GenreSelectorScreen()
                 }
             }
         }
