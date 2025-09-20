@@ -1,6 +1,5 @@
 package com.g22.orbitsoundkotlin.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import android.Manifest
 import android.content.Context
 import android.location.Location
@@ -13,6 +12,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
@@ -45,6 +44,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -200,6 +200,9 @@ fun HomeScreen() {
         label = "lightning"
     )
 
+    val screenH = LocalConfiguration.current.screenHeightDp
+    val astronautHeight = (screenH * 0.50f).dp  // ≈50% alto pantalla → más grande
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -223,35 +226,28 @@ fun HomeScreen() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(bottom = 90.dp), // deja espacio para la NavigationBar
         ) {
-            Spacer(Modifier.height(12.dp))
-
-            // ─── Barra tipo "window" con título ───
-            GreetingBar(
-                title = "Hello, user"
-                // Si quieres mostrar clima aquí:
-                // subtitle = weather?.let { "${it.temperatureC.toInt()}°C • ${it.description}" }
-            )
+            // Barra superior tipo ventana
+            GreetingBar(title = "Hello, user")
 
             Spacer(Modifier.height(6.dp))
 
-            // ─── Astronauta grande como en Figma ───
-            val floatYOffset = sin(time * (2f * PI.toFloat())) * 10f
+            // Astronauta grande ocupando el alto disponible
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(360.dp),
+                    .weight(1f),                  // empuja lo de abajo
                 contentAlignment = Alignment.Center
             ) {
-                Astronaut(floatYOffsetDp = floatYOffset.dp)
+                Astronaut(floatYOffsetDp = (sin(time * (2f * PI.toFloat())) * 10f).dp,
+                    heightDp = astronautHeight)
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            // ─── Player pill ───
+            // Sección inferior: player + accesos
             PlayerPill(
-                albumName = "coldrain", // REQUIRED_IMAGE: coldrain.jpg (o .png con nombre lógico coldrain)
+                albumName = "coldrain", // REQUIRED_IMAGE: coldrain.jpg (o .png)
                 songTitle = "One last adventure",
                 artist = "Evan Call",
                 onPrev = { /* TODO */ },
@@ -261,7 +257,6 @@ fun HomeScreen() {
 
             Spacer(Modifier.height(12.dp))
 
-            // ─── Fila de 5 accesos como en Figma ───
             ShortcutsFive(
                 items = listOf(
                     ShortcutSpec("Stellar Emotions", Icons.Outlined.AutoAwesome),
@@ -272,11 +267,9 @@ fun HomeScreen() {
                 ),
                 onTapIndex = { /* TODO: rutas */ }
             )
-
-            Spacer(Modifier.height(24.dp))
         }
 
-        // ─── Navbar inferior (puedes cambiar íconos si quieres) ───
+        // Navbar inferior
         NavigationBar(
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
@@ -321,7 +314,6 @@ private fun GreetingBar(title: String, subtitle: String? = null) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // “Botón” casita
                 Box(
                     modifier = Modifier
                         .size(28.dp)
@@ -348,7 +340,6 @@ private fun GreetingBar(title: String, subtitle: String? = null) {
                 }
             }
 
-            // Badge derecha
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
@@ -362,10 +353,10 @@ private fun GreetingBar(title: String, subtitle: String? = null) {
 }
 
 @Composable
-private fun Astronaut(floatYOffsetDp: Dp) {
+private fun Astronaut(floatYOffsetDp: Dp, heightDp: Dp) {
     // REQUIRED_IMAGE: astronaut_home.png  ← súbelo a res/drawable
     val p = painterByNameOrNull("astronaut_home")
-    Box(modifier = Modifier.height(360.dp)) {
+    Box(modifier = Modifier.height(heightDp)) {
         if (p != null) {
             Image(
                 painter = p,
@@ -373,14 +364,14 @@ private fun Astronaut(floatYOffsetDp: Dp) {
                 modifier = Modifier
                     .offset(y = floatYOffsetDp)
                     .fillMaxWidth()
-                    .height(360.dp)
+                    .height(heightDp)
             )
         } else {
             Box(
                 modifier = Modifier
                     .offset(y = floatYOffsetDp)
                     .fillMaxWidth()
-                    .height(360.dp)
+                    .height(heightDp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(Color(0xFF0B1A2F)),
                 contentAlignment = Alignment.Center
@@ -416,7 +407,7 @@ private fun PlayerPill(
                     contentDescription = "Album",
                     modifier = Modifier
                         .size(46.dp)
-                        .clip(CircleShape) // pill style como Figma
+                        .clip(CircleShape)
                 )
             } else {
                 Box(
@@ -446,7 +437,6 @@ private fun PlayerPill(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(8.dp))
-                // progress
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -481,7 +471,6 @@ private fun ShortcutsFive(
     items: List<ShortcutSpec>,
     onTapIndex: (Int) -> Unit
 ) {
-    // Exactamente 5 columnas como en Figma
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -497,9 +486,7 @@ private fun RowScope.ShortcutTile(spec: ShortcutSpec, onTap: () -> Unit) {
     OutlinedCard(
         onClick = onTap,
         colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
-        // ⬇⬇⬇  CAMBIA ESTA LÍNEA
         border = BorderStroke(1.dp, Color(0xFF2A3B5A)),
-        // ⬆⬆⬆
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .weight(1f)
@@ -524,7 +511,6 @@ private fun RowScope.ShortcutTile(spec: ShortcutSpec, onTap: () -> Unit) {
         }
     }
 }
-
 
 // ───────────────────────────── Star field ─────────────────────────────
 
