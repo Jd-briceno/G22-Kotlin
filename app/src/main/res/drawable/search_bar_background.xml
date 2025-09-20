@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- Rectángulo principal -->
+    <item android:top="15dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#010B19" />
+            <stroke android:width="1dp" android:color="#B4B1B8" />
+            <corners android:radius="25dp" />
+        </shape>
+    </item>
+    
+    <!-- Círculo exterior -->
+    <item android:left="380dp" android:top="1dp">
+        <shape android:shape="oval">
+            <solid android:color="#010B19" />
+            <stroke android:width="1dp" android:color="#E9E8EE" />
+            <size android:width="80dp" android:height="80dp" />
+        </shape>
+    </item>
+    
+    <!-- Círculo medio -->
+    <item android:left="386dp" android:top="7dp">
+        <shape android:shape="oval">
+            <solid android:color="@android:color/transparent" />
+            <stroke android:width="1dp" android:color="#B4B1B8" />
+            <size android:width="68dp" android:height="68dp" />
+        </shape>
+    </item>
+    
+    <!-- Círculo interior -->
+    <item android:left="392dp" android:top="13dp">
+        <shape android:shape="oval">
+            <solid android:color="@android:color/transparent" />
+            <stroke android:width="1dp" android:color="#B4B1B8" />
+            <size android:width="56dp" android:height="56dp" />
+        </shape>
+    </item>
+    
+    <!-- Círculo central -->
+    <item android:left="398dp" android:top="19dp">
+        <shape android:shape="oval">
+            <solid android:color="#B4B1B8" />
+            <size android:width="44dp" android:height="44dp" />
+        </shape>
+    </item>
+
+</layer-list>
