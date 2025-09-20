@@ -30,12 +30,15 @@ import com.g22.orbitsoundkotlin.services.SpotifyService
 import kotlinx.coroutines.*
 
 @Composable
-fun LibraryScreen() {
+fun LibraryScreen(
+    onNavigateToProfile: () -> Unit = {}
+) {
     val spotifyService = remember { SpotifyService() }
     var songs by remember { mutableStateOf<List<Track>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
+    // 🎨 Playlists simuladas (igual que en Flutter)
     val djRecommendations = listOf(
         Playlist("Electronic Sunset", "https://i.scdn.co/image/ab67616d0000b273e59f65e3c9131d123456aaaa"),
         Playlist("Deep House Mix", "https://i.scdn.co/image/ab67616d0000b2739f39e8b3dff67aa987654bbb")
@@ -95,7 +98,8 @@ fun LibraryScreen() {
             NavbarComposable(
                 username = "Jay Walker",
                 title = "Lightning Ninja",
-                subtitle = "Vinyl Library"
+                subtitle = "Vinyl Library",
+                onProfileClick = onNavigateToProfile
             )
         }
 
@@ -238,7 +242,8 @@ fun LibraryScreen() {
 fun NavbarComposable(
     username: String,
     title: String,
-    subtitle: String
+    subtitle: String,
+    onProfileClick: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -344,14 +349,14 @@ fun NavbarComposable(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 // Avatar del perfil
-                Box(
+                IconButton(
+                    onClick = onProfileClick,
                     modifier = Modifier
                         .size(40.dp)
                         .background(
                             Color(0xFF2196F3),
                             RoundedCornerShape(8.dp)
-                        ),
-                    contentAlignment = Alignment.Center
+                        )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person,
