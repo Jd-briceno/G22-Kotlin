@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -64,8 +65,11 @@ import com.g22.orbitsoundkotlin.ui.theme.RobotoMono
 fun LoginScreen(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
+    initialEmail: String = "",
+    initialRememberMe: Boolean = false,
+    showSocialProviders: Boolean = true,
     onSignIn: (email: String, password: String, rememberMe: Boolean) -> Unit = { _, _, _ -> },
-    onForgotPassword: () -> Unit = {},
+    onForgotPassword: (email: String) -> Unit = { _ -> },
     onNavigateToSignUp: () -> Unit = {},
     onGoogleSignIn: () -> Unit = {},
     onAppleSignIn: () -> Unit = {},
@@ -75,10 +79,13 @@ fun LoginScreen(
     val baseColor = Color(0xFFB4B1B8).copy(alpha = 0.3f)
     val focusColor = Color(0xFF0095FC)
 
-    var email by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf(initialEmail) }
     var password by rememberSaveable { mutableStateOf("") }
-    var rememberMe by rememberSaveable { mutableStateOf(false) }
+    var rememberMe by rememberSaveable { mutableStateOf(initialRememberMe) }
     var showPassword by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(initialEmail) { email = initialEmail }
+    LaunchedEffect(initialRememberMe) { rememberMe = initialRememberMe }
 
     Box(
         modifier = modifier
@@ -218,7 +225,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             TextButton(
-                onClick = onForgotPassword,
+                onClick = { onForgotPassword(email.trim()) },
                 enabled = !isLoading,
                 colors = ButtonDefaults.textButtonColors(
                     contentColor = Color.White.copy(alpha = 0.7f)
@@ -235,60 +242,66 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Divider(
-                    color = Color.White.copy(alpha = 0.3f),
-                    thickness = 1.dp,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "or continue with",
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    style = TextStyle(
-                        fontFamily = RobotoMono,
-                        color = Color.White.copy(alpha = 0.7f)
+            if (showSocialProviders) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Divider(
+                        color = Color.White.copy(alpha = 0.3f),
+                        thickness = 1.dp,
+                        modifier = Modifier.weight(1f)
                     )
-                )
-                Divider(
-                    color = Color.White.copy(alpha = 0.3f),
-                    thickness = 1.dp,
-                    modifier = Modifier.weight(1f)
-                )
+                    Text(
+                        text = "or continue with",
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        style = TextStyle(
+                            fontFamily = RobotoMono,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    )
+                    Divider(
+                        color = Color.White.copy(alpha = 0.3f),
+                        thickness = 1.dp,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    SocialLoginButton(
+                        iconRes = R.drawable.google,
+                        contentDescription = "Sign in with Google",
+                        onClick = onGoogleSignIn,
+                        enabled = !isLoading,
+                        baseColor = baseColor
+                    )
+                    SocialLoginButton(
+                        iconRes = R.drawable.apple,
+                        contentDescription = "Sign in with Apple",
+                        onClick = onAppleSignIn,
+                        enabled = !isLoading,
+                        baseColor = baseColor
+                    )
+                    SocialLoginButton(
+                        iconRes = R.drawable.spotify_logo,
+                        contentDescription = "Sign in with Spotify",
+                        onClick = onSpotifySignIn,
+                        enabled = !isLoading,
+                        baseColor = baseColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+            } else {
+                Spacer(modifier = Modifier.height(32.dp))
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                SocialLoginButton(
-                    iconRes = R.drawable.google,
-                    contentDescription = "Sign in with Google",
-                    onClick = onGoogleSignIn,
-                    enabled = !isLoading,
-                    baseColor = baseColor
-                )
-                SocialLoginButton(
-                    iconRes = R.drawable.apple,
-                    contentDescription = "Sign in with Apple",
-                    onClick = onAppleSignIn,
-                    enabled = !isLoading,
-                    baseColor = baseColor
-                )
-                SocialLoginButton(
-                    iconRes = R.drawable.spotify_logo,
-                    contentDescription = "Sign in with Spotify",
-                    onClick = onSpotifySignIn,
-                    enabled = !isLoading,
-                    baseColor = baseColor
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
 
             Row(
                 horizontalArrangement = Arrangement.Center,

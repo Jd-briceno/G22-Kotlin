@@ -78,6 +78,19 @@ class AuthService(
         }
     }
 
+    suspend fun sendPasswordReset(email: String): Result<Unit> {
+        return try {
+            auth.sendPasswordResetEmail(email).awaitResult()
+            Result.success(Unit)
+        } catch (ex: Exception) {
+            val message = when (ex) {
+                is FirebaseAuthInvalidUserException -> "We couldn't find an account for $email."
+                else -> ex.humanMessage()
+            }
+            Result.failure(Exception(message))
+        }
+    }
+
     suspend fun updateUserInterests(
         user: AuthUser,
         interests: List<String>,
