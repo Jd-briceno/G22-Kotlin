@@ -14,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,9 @@ import com.g22.orbitsoundkotlin.R
 import com.g22.orbitsoundkotlin.auth.AuthResult
 import com.g22.orbitsoundkotlin.auth.AuthService
 import com.g22.orbitsoundkotlin.auth.AuthUser
+import com.g22.orbitsoundkotlin.data.RememberSettings
+import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
+import com.g22.orbitsoundkotlin.data.userPreferencesStore
 import com.g22.orbitsoundkotlin.ui.screens.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
 import com.g22.orbitsoundkotlin.ui.screens.LoginScreen
@@ -56,6 +60,8 @@ private fun OrbitSoundApp() {
     val coroutineScope = rememberCoroutineScope()
     val authService = remember { AuthService() }
     val context = LocalContext.current
+    val userPreferencesRepository = remember { UserPreferencesRepository(context.userPreferencesStore) }
+    val rememberSettings by userPreferencesRepository.rememberSettings.collectAsState(initial = RememberSettings())
 
     val googleClientId = remember {
         val resId = context.resources.getIdentifier(
@@ -157,22 +163,45 @@ private fun OrbitSoundApp() {
                         .fillMaxSize()
                         .padding(paddingValues),
                     isLoading = isAuthenticating,
-                    onSignIn = { email, password, _ ->
-                        if (email.isBlank() || password.isBlank()) {
+                    initialEmail = rememberSettings.email,
+                    initialRememberMe = rememberSettings.rememberMe,
+                    showSocialProviders = false,
+                    onSignIn = { email, password, remember ->
+                        val sanitizedEmail = email.trim()
+                        val sanitizedPassword = password.trim()
+                        if (sanitizedEmail.isBlank() || sanitizedPassword.isBlank()) {
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar("Enter email and password to continue.")
                             }
                             return@LoginScreen
                         }
                         runAuthRequest(
-                            request = { authService.signInWithEmail(email, password) }
+                            request = { authService.signInWithEmail(sanitizedEmail, sanitizedPassword) }
                         ) { success ->
+                            coroutineScope.launch {
+                                userPreferencesRepository.updateRememberMe(remember, sanitizedEmail)
+                            }
                             handleAuthSuccess(success)
                         }
                     },
-                    onForgotPassword = {
+                    onForgotPassword = { email ->
+                        if (email.isBlank()) {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Enter your email first to reset your password.")
+                            }
+                            return@LoginScreen
+                        }
                         coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Password recovery isn't available yet.")
+                            isAuthenticating = true
+                            val reset = authService.sendPasswordReset(email)
+                            if (reset.isSuccess) {
+                                snackbarHostState.showSnackbar("Password reset email sent to $email.")
+                            } else {
+                                val message = reset.exceptionOrNull()?.message
+                                    ?: "Unable to send reset email."
+                                snackbarHostState.showSnackbar(message)
+                            }
+                            isAuthenticating = false
                         }
                     },
                     onNavigateToSignUp = {
