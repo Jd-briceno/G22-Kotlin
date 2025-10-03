@@ -16,23 +16,27 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.annotation.DrawableRes
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.outlined.Archive
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material.icons.outlined.ManageAccounts
+import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,13 +48,17 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.g22.orbitsoundkotlin.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
@@ -226,128 +234,259 @@ fun HomeScreen() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .padding(bottom = 90.dp), // deja espacio para la NavigationBar
+                .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
-            // Barra superior tipo ventana
-            GreetingBar(title = "Hello, user")
+            OrbitNavbar(
+                username = "user",
+                title = "Ninja",
+                subtitle = null,
+                profilePainter = null
+            )
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // Astronauta grande ocupando el alto disponible
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),                  // empuja lo de abajo
+                    .weight(1f, fill = false),
                 contentAlignment = Alignment.Center
             ) {
-                Astronaut(floatYOffsetDp = (sin(time * (2f * PI.toFloat())) * 10f).dp,
-                    heightDp = astronautHeight)
+                Astronaut(
+                    floatYOffsetDp = (sin(time * (2f * PI.toFloat())) * 10f).dp,
+                    heightDp = astronautHeight
+                )
             }
 
-            // Sección inferior: player + accesos
+            Spacer(Modifier.height(24.dp))
+
             PlayerPill(
                 albumName = "coldrain", // REQUIRED_IMAGE: coldrain.jpg (o .png)
                 songTitle = "One last adventure",
                 artist = "Evan Call",
-                onPrev = { /* TODO */ },
-                onPlayPause = { /* TODO */ },
-                onNext = { /* TODO */ }
+                onPrev = {},
+                onPlayPause = {},
+                onNext = {}
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(24.dp))
 
             ShortcutsFive(
                 items = listOf(
-                    ShortcutSpec("Stellar Emotions", Icons.Outlined.AutoAwesome),
-                    ShortcutSpec("Star Archive", Icons.Outlined.Archive),
-                    ShortcutSpec("Captain's Log", Icons.Outlined.Description),
-                    ShortcutSpec("Crew members", Icons.Outlined.Group),
-                    ShortcutSpec("Command profile", Icons.Outlined.ManageAccounts)
-                ),
-                onTapIndex = { /* TODO: rutas */ }
+                    ShortcutSpec("Stellar Emotions", R.drawable.stellar_emotions),
+                    ShortcutSpec("Star Archive", R.drawable.star_archive),
+                    ShortcutSpec("Captain's Log", R.drawable.captain_log),
+                    ShortcutSpec("Crew members", R.drawable.crew_members),
+                    ShortcutSpec("Command profile", R.drawable.command_profile)
+                )
             )
-        }
 
-        // Navbar inferior
-        NavigationBar(
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            NavigationBarItem(
-                selected = true,
-                onClick = { /* TODO */ },
-                icon = { Icon(Icons.Filled.Home, contentDescription = "Library") },
-                label = { Text("Library") }
-            )
-            NavigationBarItem(
-                selected = false,
-                onClick = { /* TODO */ },
-                icon = { Icon(Icons.Filled.Settings, contentDescription = "Terminal") },
-                label = { Text("Terminal") }
-            )
-            NavigationBarItem(
-                selected = false,
-                onClick = { /* TODO */ },
-                icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
-                label = { Text("Profile") }
-            )
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
 
 // ───────────────────────────── UI pieces ─────────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun GreetingBar(title: String, subtitle: String? = null) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0B1A2F)),
-        shape = RoundedCornerShape(18.dp),
+private fun OrbitNavbar(
+    username: String,
+    title: String,
+    subtitle: String? = null,
+    profilePainter: Painter? = null
+) {
+    val dark = Color(0xFF010B19)
+    val borderColor = Color(0xFFB4B1B8)
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 64.dp)
+            .height(110.dp)
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        val outerShape = RoundedCornerShape(topEnd = 8.dp, bottomStart = 8.dp)
+        Box(
+            modifier = Modifier
+                .offset(x = 28.dp, y = 14.dp)
+                .size(width = 325.dp, height = 86.dp)
+                .clip(outerShape)
+                .background(dark)
+                .border(BorderStroke(2.dp, borderColor), outerShape)
+        )
+
+        val centerShape = RoundedCornerShape(bottomStart = 5.dp, bottomEnd = 5.dp, topEnd = 5.dp)
+        Box(
+            modifier = Modifier
+                .offset(x = 21.dp, y = 36.dp)
+                .size(width = 225.dp, height = 57.dp)
+                .clip(centerShape)
+                .background(dark)
+                .border(BorderStroke(2.dp, borderColor), centerShape)
+                .padding(start = 32.dp, end = 12.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
+            Text(
+                text = subtitle ?: "Hello, $username",
+                color = Color(0xFFE9E8EE),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+                maxLines = 1,
+                modifier = Modifier.basicMarquee(),
+            )
+        }
+
+        val topShape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
+        Box(
+            modifier = Modifier
+                .offset(x = 21.dp, y = 1.dp)
+                .size(width = 300.dp, height = 30.dp)
+                .clip(topShape)
+                .background(dark)
+                .border(BorderStroke(2.dp, borderColor), topShape)
+        )
+
+        val titleShape = RoundedCornerShape(10.dp)
+        Box(
+            modifier = Modifier
+                .offset(x = 38.dp, y = 4.5.dp)
+                .size(width = 123.dp, height = 22.dp)
+                .clip(titleShape)
+                .border(BorderStroke(2.dp, borderColor), titleShape)
+                .padding(horizontal = 6.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = title,
+                color = Color(0xFFE9E8EE),
+                fontSize = 13.sp,
+                maxLines = 1,
+                modifier = Modifier.basicMarquee(),
+            )
+        }
+
+        val buttonShape = RoundedCornerShape(8.dp)
+        Box(
+            modifier = Modifier
+                .offset(x = 1.dp, y = 42.dp)
+                .size(45.dp)
+                .clip(buttonShape)
+                .background(dark)
+                .border(BorderStroke(2.dp, borderColor), buttonShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Home,
+                contentDescription = "Home",
+                tint = Color(0xFFE9E8EE),
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .offset(x = 252.dp, y = 42.dp)
+                .size(45.dp)
+                .clip(buttonShape)
+                .background(dark)
+                .border(BorderStroke(2.dp, borderColor), buttonShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Notifications,
+                contentDescription = "Notifications",
+                tint = Color(0xFFE9E8EE)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .offset(x = 300.dp, y = 42.dp)
+                .size(45.dp)
+                .clip(buttonShape)
+                .border(BorderStroke(2.dp, borderColor), buttonShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (profilePainter != null) {
+                Image(
+                    painter = profilePainter,
+                    contentDescription = "Profile",
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF132540)),
-                    contentAlignment = Alignment.Center
-                ) { Text("🏠") }
-
-                Spacer(Modifier.width(10.dp))
-
-                Column {
-                    Text(
-                        text = title,
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
-                    )
-                    if (subtitle != null) {
-                        Text(
-                            text = subtitle,
-                            color = Color(0xFFB0BEC5),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(6.dp))
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Person,
+                    contentDescription = "Profile placeholder",
+                    tint = Color(0xFFE9E8EE)
+                )
             }
+        }
 
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF132540))
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-            ) {
-                Text("🛰️", color = Color(0xFF81D4FA))
-            }
+        Box(
+            modifier = Modifier
+                .offset(x = 167.dp, y = 4.5.dp)
+                .size(24.dp)
+                .clip(CircleShape)
+                .border(BorderStroke(2.dp, borderColor), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Headset,
+                contentDescription = "Headphones",
+                tint = borderColor,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .offset(x = 192.dp, y = 4.5.dp)
+                .size(24.dp)
+                .clip(CircleShape)
+                .border(BorderStroke(2.dp, borderColor), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.MusicNote,
+                contentDescription = "Music",
+                tint = borderColor,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .offset(x = 245.dp, y = 7.dp)
+                .size(17.dp)
+                .clip(CircleShape)
+                .border(BorderStroke(2.dp, borderColor), CircleShape)
+        )
+
+        Box(
+            modifier = Modifier
+                .offset(x = 265.dp, y = 18.dp)
+                .size(width = 14.dp, height = 2.dp)
+                .background(borderColor)
+        )
+
+        Canvas(
+            modifier = Modifier
+                .offset(x = 280.dp, y = 10.dp)
+                .size(14.dp)
+        ) {
+            val paintColor = borderColor
+            drawLine(
+                color = paintColor,
+                strokeWidth = 2f,
+                start = Offset.Zero,
+                end = Offset(size.width, size.height)
+            )
+            drawLine(
+                color = paintColor,
+                strokeWidth = 2f,
+                start = Offset(size.width, 0f),
+                end = Offset(0f, size.height)
+            )
         }
     }
 }
@@ -464,51 +603,59 @@ private fun PlayerPill(
     }
 }
 
-data class ShortcutSpec(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+data class ShortcutSpec(val label: String, @DrawableRes val iconRes: Int)
 
 @Composable
 private fun ShortcutsFive(
-    items: List<ShortcutSpec>,
-    onTapIndex: (Int) -> Unit
+    items: List<ShortcutSpec>
 ) {
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items.take(5).forEachIndexed { i, spec ->
-            ShortcutTile(spec) { onTapIndex(i) }
+        items.take(5).forEach { spec ->
+            ShortcutTile(spec)
         }
     }
 }
 
 @Composable
-private fun RowScope.ShortcutTile(spec: ShortcutSpec, onTap: () -> Unit) {
-    OutlinedCard(
-        onClick = onTap,
-        colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
-        border = BorderStroke(1.dp, Color(0xFF2A3B5A)),
-        shape = RoundedCornerShape(16.dp),
+private fun RowScope.ShortcutTile(spec: ShortcutSpec) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Column(
         modifier = Modifier
             .weight(1f)
-            .height(96.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 10.dp, start = 6.dp, end = 6.dp, bottom = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(spec.icon, contentDescription = spec.label, tint = Color(0xFF9FC2FF))
-            Spacer(Modifier.height(8.dp))
-            Text(
-                spec.label,
-                color = Color(0xFFE0E0E0),
-                style = MaterialTheme.typography.labelSmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+            .heightIn(min = 150.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = ripple(
+                    bounded = true,
+                    color = Color.White.copy(alpha = 0.2f)
+                ),
+                onClick = {}
             )
-        }
+            .padding(horizontal = 6.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(id = spec.iconRes),
+            contentDescription = spec.label,
+            modifier = Modifier
+                .heightIn(min = 110.dp)
+                .fillMaxWidth(0.88f),
+            contentScale = ContentScale.Fit
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = spec.label,
+            color = Color(0xFFE0E0E0),
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -524,23 +671,30 @@ private fun StarField(
 
     val stars = remember {
         val rnd = Random(42)
-        List(120) {
+        List(140) {
             Star(
-                pos = Offset(rnd.nextFloat() * 500f, rnd.nextFloat() * 900f),
+                pos = Offset(rnd.nextFloat(), rnd.nextFloat()),
                 size = (1f + rnd.nextFloat() * 2f),
                 phase = rnd.nextFloat() * (2f * PI.toFloat()),
                 speed = 0.5f + rnd.nextFloat() * 1.5f,
-                colorIndex = rnd.nextInt(0, maxOf(1, starColors.size))
+                colorIndex = rnd.nextInt(0, 3)
             )
         }
     }
 
     Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height
+        val colorCount = starColors.size.coerceAtLeast(1)
         stars.forEach { s ->
             val t = (sin(globalTime * s.speed + s.phase) + 1f) * 0.5f // 0..1
             val radius = s.size * (0.5f + t * 0.5f)
-            val c = starColors.getOrElse(s.colorIndex) { Color.White }
-            drawCircle(color = c.copy(alpha = 0.4f + 0.6f * t), radius = radius, center = s.pos)
+            val c = starColors.getOrElse(s.colorIndex % colorCount) { Color.White }
+            drawCircle(
+                color = c.copy(alpha = 0.4f + 0.6f * t),
+                radius = radius,
+                center = Offset(s.pos.x * width, s.pos.y * height)
+            )
         }
     }
 }
