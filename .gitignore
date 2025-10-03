@@ -1,15 +1,32 @@
+# Gradle
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+*.ipr
+*.iws
+.cxx/
 local.properties
+captures/
+.externalNativeBuild/
+.DS_Store
+Thumbs.db
+
+# Kotlin / JetBrains
+out/
+
+# Misc
+*.log
+*.tmp
+*.orig
+
+# Firebase & credentials
+google-services.json
+**/google-services.json
+
+# Generated APKs
+/app/release/
