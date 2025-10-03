@@ -87,13 +87,27 @@ private fun OrbitSoundApp() {
     ) {
         coroutineScope.launch {
             isAuthenticating = true
-            when (val result = request()) {
-                is AuthResult.Success -> onSuccess(result)
-                is AuthResult.Error -> snackbarHostState.showSnackbar(result.message)
+            try {
+                val result = request()
+                when (result) {
+                    is AuthResult.Success -> {
+                        onSuccess(result)   // 🔑 primero navegamos
+                        isAuthenticating = false
+                    }
+                    is AuthResult.Error -> {
+                        snackbarHostState.showSnackbar(result.message)
+                        isAuthenticating = false
+                    }
+                }
+            } catch (t: Throwable) {
+                snackbarHostState.showSnackbar(
+                    t.message ?: "Something went wrong. Please try again."
+                )
+                isAuthenticating = false
             }
-            isAuthenticating = false
         }
     }
+
 
     fun handleAuthSuccess(success: AuthResult.Success) {
         destination = if (success.requiresProfileCompletion) {
@@ -106,33 +120,28 @@ private fun OrbitSoundApp() {
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode != Activity.RESULT_OK) {
-            isAuthenticating = false
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar("Google sign-in was cancelled.")
-            }
-            return@rememberLauncherForActivityResult
-        }
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        try {
-            val account = task.getResult(ApiException::class.java)
-            val token = account?.idToken
-            if (token.isNullOrBlank()) {
-                isAuthenticating = false
-                coroutineScope.launch {
+        coroutineScope.launch {
+            isAuthenticating = true
+            try {
+                if (result.resultCode != Activity.RESULT_OK) {
+                    snackbarHostState.showSnackbar("Google sign-in was cancelled.")
+                    return@launch
+                }
+                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                val account = task.getResult(ApiException::class.java)
+                val token = account?.idToken
+                if (token.isNullOrBlank()) {
                     snackbarHostState.showSnackbar("Unable to retrieve Google credentials.")
+                } else {
+                    when (val auth = authService.signInWithGoogle(token)) {
+                        is AuthResult.Success -> handleAuthSuccess(auth)
+                        is AuthResult.Error -> snackbarHostState.showSnackbar(auth.message)
+                    }
                 }
-            } else {
-                runAuthRequest(
-                    request = { authService.signInWithGoogle(token) }
-                ) { success ->
-                    handleAuthSuccess(success)
-                }
-            }
-        } catch (ex: ApiException) {
-            isAuthenticating = false
-            coroutineScope.launch {
+            } catch (ex: ApiException) {
                 snackbarHostState.showSnackbar(ex.localizedMessage ?: "Google sign-in failed.")
+            } finally {
+                isAuthenticating = false
             }
         }
     }
@@ -155,8 +164,8 @@ private fun OrbitSoundApp() {
                             }
                             return@LoginScreen
                         }
-                       runAuthRequest(
-                           request = { authService.signInWithEmail(email, password) }
+                        runAuthRequest(
+                            request = { authService.signInWithEmail(email, password) }
                         ) { success ->
                             handleAuthSuccess(success)
                         }
@@ -257,21 +266,26 @@ private fun OrbitSoundApp() {
                         destination = AppDestination.Login
                     },
                     onSkip = {
-                        destination = AppDestination.Home(current.user)
+                        // Marcamos perfil como completado aunque no haya intereses,
+                        // y navegamos inmediatamente a Home.
                         coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Skipped interest selection.")
+                            authService.updateUserInterests(
+                                user = current.user,
+                                interests = emptyList(),
+                                skipped = true
+                            )
                         }
+                        destination = AppDestination.Home(current.user)
                     },
                     onContinue = { selections ->
-                        destination = AppDestination.Home(current.user)
                         coroutineScope.launch {
-                            val message = if (selections.isEmpty()) {
-                                "Saved without selecting interests."
-                            } else {
-                                "Saved ${selections.size} interests."
-                            }
-                            snackbarHostState.showSnackbar(message)
+                            authService.updateUserInterests(
+                                user = current.user,
+                                interests = selections,
+                                skipped = false
+                            )
                         }
+                        destination = AppDestination.Home(current.user)
                     }
                 )
             }
