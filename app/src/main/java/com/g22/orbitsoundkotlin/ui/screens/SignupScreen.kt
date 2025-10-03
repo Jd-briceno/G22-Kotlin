@@ -54,6 +54,13 @@ import com.g22.orbitsoundkotlin.ui.theme.EncodeSansExpanded
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 import com.g22.orbitsoundkotlin.ui.theme.RobotoMono
 
+/**
+ * DRAWABLES REQUERIDOS (res/drawable):
+ * - logo_tentative.png   // REQUIRED_IMAGE: logo_tentative.png
+ * - google.png           // REQUIRED_IMAGE: google.png
+ * - apple.png            // REQUIRED_IMAGE: apple.png
+ * - spotify_logo.png     // REQUIRED_IMAGE: spotify_logo.png
+ */
 @Composable
 fun SignupScreen(
     modifier: Modifier = Modifier,
@@ -89,12 +96,11 @@ fun SignupScreen(
         ) {
             Spacer(modifier = Modifier.height(48.dp))
 
-            // ACA VA UNA IMAGEN USADA!!!
             Image(
                 painter = painterResource(id = R.drawable.logo_tentative),
                 contentDescription = null,
                 modifier = Modifier.size(200.dp)
-            )
+            ) // REQUIRED_IMAGE: logo_tentative.png
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -234,21 +240,21 @@ fun SignupScreen(
                     onClick = onGoogleSignUp,
                     enabled = !isLoading,
                     baseColor = baseColor
-                )
+                ) // REQUIRED_IMAGE: google.png
                 SocialLoginButton(
                     iconRes = R.drawable.apple,
                     contentDescription = "Sign up with Apple",
                     onClick = onAppleSignUp,
                     enabled = !isLoading,
                     baseColor = baseColor
-                )
+                ) // REQUIRED_IMAGE: apple.png
                 SocialLoginButton(
                     iconRes = R.drawable.spotify_logo,
                     contentDescription = "Sign up with Spotify",
                     onClick = onSpotifySignUp,
                     enabled = !isLoading,
                     baseColor = baseColor
-                )
+                ) // REQUIRED_IMAGE: spotify_logo.png
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -301,8 +307,7 @@ private fun OutlinedInputField(
         androidx.compose.material3.OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             textStyle = TextStyle(
                 fontFamily = RobotoMono,
                 color = Color.White
@@ -366,11 +371,9 @@ private fun SocialLoginButton(
         color = baseColor
     ) {
         Box(
-            modifier = Modifier
-                .size(width = 88.dp, height = 61.dp),
+            modifier = Modifier.size(width = 88.dp, height = 61.dp),
             contentAlignment = Alignment.Center
         ) {
-            // ACA VA UNA IMAGEN USADA!!!
             Image(
                 painter = painterResource(id = iconRes),
                 contentDescription = contentDescription,
