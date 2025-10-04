@@ -93,11 +93,12 @@ private fun OrbitSoundApp() {
         }
     }
 
-//    var destination by remember { mutableStateOf<AppDestination>(AppDestination.Login) }
-//    var isAuthenticating by remember { mutableStateOf(false) }
-
-    var destination by remember { mutableStateOf<AppDestination>(AppDestination.Home(debugUser)) }
+    var destination by remember { mutableStateOf<AppDestination>(AppDestination.Login) }
     var isAuthenticating by remember { mutableStateOf(false) }
+
+    // Testing purposes:
+    //var destination by remember { mutableStateOf<AppDestination>(AppDestination.Home(debugUser)) }
+    //var isAuthenticating by remember { mutableStateOf(false) }
 
     fun runAuthRequest(
         request: suspend () -> AuthResult,
@@ -337,6 +338,7 @@ private fun OrbitSoundApp() {
                         .padding(paddingValues)
                 ) {
                     HomeScreen()
+                    // Testing purposes:
                     //StellarEmotionsScreen(username = current.user.email ?: "User")
                 }
             }
