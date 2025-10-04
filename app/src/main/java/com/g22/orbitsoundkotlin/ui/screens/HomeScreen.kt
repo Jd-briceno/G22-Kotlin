@@ -68,6 +68,10 @@ import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.random.Random
+import com.g22.orbitsoundkotlin.ui.screens.shared.OrbitSoundHeader
+import com.g22.orbitsoundkotlin.ui.screens.shared.StarField
+import com.g22.orbitsoundkotlin.ui.screens.shared.painterByNameOrNull
+
 
 // ───────────────────────────── Models / Service (stub) ─────────────────────────────
 

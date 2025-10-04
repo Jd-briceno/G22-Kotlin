@@ -39,6 +39,7 @@ import com.g22.orbitsoundkotlin.ui.screens.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
 import com.g22.orbitsoundkotlin.ui.screens.LoginScreen
 import com.g22.orbitsoundkotlin.ui.screens.SignupScreen
+import com.g22.orbitsoundkotlin.ui.screens.StellarEmotionsScreen
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 
 class MainActivity : ComponentActivity() {
@@ -63,6 +64,14 @@ private fun OrbitSoundApp() {
     val userPreferencesRepository = remember { UserPreferencesRepository(context.userPreferencesStore) }
     val rememberSettings by userPreferencesRepository.rememberSettings.collectAsState(initial = RememberSettings())
 
+    // Define a placeholder AuthUser for debug
+    val debugUser = remember {
+        AuthUser(
+            id = "debug-uid-12345",
+            email = "debug@example.com"
+        )
+    }
+
     val googleClientId = remember {
         val resId = context.resources.getIdentifier(
             "default_web_client_id",
@@ -84,7 +93,10 @@ private fun OrbitSoundApp() {
         }
     }
 
-    var destination by remember { mutableStateOf<AppDestination>(AppDestination.Login) }
+//    var destination by remember { mutableStateOf<AppDestination>(AppDestination.Login) }
+//    var isAuthenticating by remember { mutableStateOf(false) }
+
+    var destination by remember { mutableStateOf<AppDestination>(AppDestination.Home(debugUser)) }
     var isAuthenticating by remember { mutableStateOf(false) }
 
     fun runAuthRequest(
@@ -325,7 +337,11 @@ private fun OrbitSoundApp() {
                         .padding(paddingValues)
                 ) {
                     HomeScreen()
+                    //StellarEmotionsScreen(username = current.user.email ?: "User")
                 }
+            }
+            is AppDestination.StellarEmotions -> {
+                StellarEmotionsScreen(username = current.user.email ?: "User")
             }
         }
     }
@@ -336,4 +352,5 @@ private sealed interface AppDestination {
     data object SignUp : AppDestination
     data class Interests(val user: AuthUser) : AppDestination
     data class Home(val user: AuthUser) : AppDestination
+    data class StellarEmotions(val user: AuthUser) : AppDestination
 }
