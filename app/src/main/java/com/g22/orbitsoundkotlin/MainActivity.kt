@@ -335,9 +335,15 @@ private fun OrbitSoundApp() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
+                        .padding(paddingValues) // Apply padding here
                 ) {
-                    HomeScreen()
+                    HomeScreen(
+                        modifier = Modifier.fillMaxSize(), // Do NOT apply padding here
+                        user = current.user,
+                        onNavigateToStellarEmotions = {
+                            destination = AppDestination.StellarEmotions(current.user)
+                        }
+                    )
                     // Testing purposes:
                     //StellarEmotionsScreen(username = current.user.email ?: "User")
                 }

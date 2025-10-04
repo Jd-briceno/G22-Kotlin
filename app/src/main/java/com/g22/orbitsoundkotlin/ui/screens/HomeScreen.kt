@@ -71,6 +71,7 @@ import kotlin.random.Random
 import com.g22.orbitsoundkotlin.ui.screens.shared.OrbitSoundHeader
 import com.g22.orbitsoundkotlin.ui.screens.shared.StarField
 import com.g22.orbitsoundkotlin.ui.screens.shared.painterByNameOrNull
+import com.g22.orbitsoundkotlin.auth.AuthUser
 
 
 // ───────────────────────────── Models / Service (stub) ─────────────────────────────
@@ -82,7 +83,7 @@ data class Weather(
 )
 
 object WeatherService {
-    // TODO: reemplázalo por tu llamada real (Retrofit/lo que uses)
+    // TODO
     suspend fun fetchWeather(lat: Double, lon: Double): Weather {
         delay(400L)
         val sample = listOf(
@@ -169,7 +170,10 @@ private fun RememberLocationPermissionRequester(onGranted: () -> Unit) {
 // ───────────────────────────── HomeScreen (UI) ─────────────────────────────
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(    modifier: Modifier = Modifier,
+                   user: AuthUser,
+                   onNavigateToStellarEmotions: () -> Unit
+) {
     val vm = remember { HomeViewModel() }
     val context = LocalContext.current
 
@@ -241,11 +245,12 @@ fun HomeScreen() {
                 .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
             OrbitNavbar(
-                username = "user",
+                username = user.email?.split("@")?.firstOrNull() ?: "Explorer",
                 title = "Ninja",
                 subtitle = null,
                 profilePainter = null
             )
+
 
             Spacer(Modifier.height(24.dp))
 
@@ -281,7 +286,12 @@ fun HomeScreen() {
                     ShortcutSpec("Captain's Log", R.drawable.captain_log),
                     ShortcutSpec("Crew members", R.drawable.crew_members),
                     ShortcutSpec("Command profile", R.drawable.command_profile)
-                )
+                ),
+                onShortcutClick = { shortcut ->
+                    if (shortcut.label == "Stellar Emotions") {
+                        onNavigateToStellarEmotions()
+                    }
+                }
             )
 
             Spacer(Modifier.height(24.dp))
@@ -611,20 +621,24 @@ data class ShortcutSpec(val label: String, @DrawableRes val iconRes: Int)
 
 @Composable
 private fun ShortcutsFive(
-    items: List<ShortcutSpec>
+    items: List<ShortcutSpec>,
+    onShortcutClick: (ShortcutSpec) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         items.take(5).forEach { spec ->
-            ShortcutTile(spec)
+            ShortcutTile(spec, onShortcutClick = { onShortcutClick(spec) })
         }
     }
 }
 
 @Composable
-private fun RowScope.ShortcutTile(spec: ShortcutSpec) {
+private fun RowScope.ShortcutTile(
+    spec: ShortcutSpec,    onShortcutClick: () -> Unit // <-- 1. Add this parameter
+) {
     val interactionSource = remember { MutableInteractionSource() }
     Column(
         modifier = Modifier
@@ -637,7 +651,7 @@ private fun RowScope.ShortcutTile(spec: ShortcutSpec) {
                     bounded = true,
                     color = Color.White.copy(alpha = 0.2f)
                 ),
-                onClick = {}
+                onClick = onShortcutClick // <-- 2. Use it here
             )
             .padding(horizontal = 6.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

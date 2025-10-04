@@ -59,7 +59,9 @@ fun StellarEmotionsScreen(
         )
 
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 20.dp) // <-- Add this line
         ) {
             // Reused Header component
             OrbitSoundHeader(
