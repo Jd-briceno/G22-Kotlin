@@ -27,38 +27,54 @@ fun VinylWithCover(
     isSpinning: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    // Imagen cuadrada simple
+    // Imagen cuadrada simple con mejor manejo de errores
     Box(
         modifier = modifier
             .size(120.dp)
             .background(Color(0xFF2C2C2C))
             .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(8.dp))
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(albumArt)
-                .crossfade(true)
-                .build(),
-            contentDescription = "Album Cover",
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop,
-            error = {
-                // Placeholder si no se encuentra la imagen
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFF2C2C2C)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "🎵",
-                        fontSize = 24.sp,
-                        color = Color(0xFFB4B1B8)
-                    )
+        if (albumArt.isNotEmpty() && albumArt != "null") {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(albumArt)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Album Cover",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop,
+                error = {
+                    // Placeholder si no se encuentra la imagen
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF2C2C2C)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "🎵",
+                            fontSize = 24.sp,
+                            color = Color(0xFFB4B1B8)
+                        )
+                    }
                 }
+            )
+        } else {
+            // Mostrar placeholder directamente si no hay URL
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF2C2C2C)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "🎵",
+                    fontSize = 24.sp,
+                    color = Color(0xFFB4B1B8)
+                )
             }
-        )
+        }
     }
 }

@@ -64,6 +64,12 @@ fun LibraryScreen(
             eternalHitsPlaylists = eternalHitsDeferred.await()
             orbitCrewPlaylists = orbitCrewDeferred.await()
             
+            println("📊 Playlists loaded:")
+            println("  - Starlight: ${starlightPlaylists.size}")
+            println("  - DJ Nova: ${djNovaPlaylists.size}")
+            println("  - Eternal Hits: ${eternalHitsPlaylists.size}")
+            println("  - Orbit Crew: ${orbitCrewPlaylists.size}")
+            
         } catch (e: Exception) {
             println("Error cargando playlists: ${e.message}")
             // Fallback a playlists locales si falla la API

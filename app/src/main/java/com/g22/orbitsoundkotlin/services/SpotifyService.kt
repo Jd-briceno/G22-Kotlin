@@ -104,19 +104,23 @@ class SpotifyService {
                     val items = playlistsData?.getAsJsonArray("items")
 
                     items?.forEach { item ->
-                        val playlistObj = item.asJsonObject
-                        val images = playlistObj.getAsJsonObject("images")
-                        val coverUrl = images?.getAsJsonArray("images")?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+                        try {
+                            val playlistObj = item.asJsonObject
+                            val images = playlistObj.getAsJsonArray("images")
+                            val coverUrl = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
 
-                        playlists.add(
-                            Playlist(
-                                title = playlistObj.get("name")?.asString ?: "",
-                                cover = coverUrl,
-                                id = playlistObj.get("id")?.asString,
-                                description = playlistObj.get("description")?.asString,
-                                trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                            playlists.add(
+                                Playlist(
+                                    title = playlistObj.get("name")?.asString ?: "",
+                                    cover = coverUrl,
+                                    id = playlistObj.get("id")?.asString,
+                                    description = playlistObj.get("description")?.asString,
+                                    trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                                )
                             )
-                        )
+                        } catch (e: Exception) {
+                            println("❌ Error parsing playlist item: ${e.message}")
+                        }
                     }
                 } else {
                     println("❌ Error searching playlists for $query in $market: $responseCode")
@@ -189,10 +193,11 @@ class SpotifyService {
 
             connection.requestMethod = "GET"
             connection.setRequestProperty("Authorization", "Bearer $token")
+            connection.setRequestProperty("Content-Type", "application/json")
 
             val responseCode = connection.responseCode
             println("📡 Response code: $responseCode")
-            
+
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
                 val jsonResponse = gson.fromJson(response, JsonObject::class.java)
@@ -216,6 +221,13 @@ class SpotifyService {
                 println("❌ Error searching tracks: $responseCode")
                 val errorResponse = connection.errorStream?.bufferedReader()?.readText()
                 println("❌ Error response: $errorResponse")
+                
+                // Si es error 400, intentar con una búsqueda más simple
+                if (responseCode == 400 && query.isNotEmpty()) {
+                    println("🔄 Retrying with simplified query...")
+                    return@withContext searchTracks(query.split(" ").first(), market)
+                }
+                
                 emptyList()
             }
         } catch (e: Exception) {
