@@ -1,5 +1,7 @@
 package com.g22.orbitsoundkotlin.ui.screens
 
+import StellarEmotionsViewModel
+import android.widget.Toast
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -12,8 +14,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,15 +44,13 @@ import kotlin.math.sin
 import com.g22.orbitsoundkotlin.models.EmotionModel
 import com.g22.orbitsoundkotlin.models.EmotionControlState
 import com.g22.orbitsoundkotlin.models.SliderEmotionControlState
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.MoodBad
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.CompareArrows
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.foundation.clickable // New Import
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import kotlin.math.roundToInt // New Import
 import com.g22.orbitsoundkotlin.R
+import androidx.lifecycle.viewmodel.compose.viewModel
+
 
 // Define custom colors for better reusability
 private val containerBorderColor = Color.White.copy(alpha = 0.4f)
@@ -204,8 +202,23 @@ fun getEmotionFromSliderValue(
 @OptIn(ExperimentalMaterial3Api::class) // Opt-in for Slider API
 @Composable
 fun StellarEmotionsScreen(
-    username: String
+    username: String,
+    onNavigateToConstellations: () -> Unit,
+    //viewModel: StellarEmotionsViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
+
+//    // 1. Collect only the error/message events from the ViewModel
+//    LaunchedEffect(key1 = Unit) {
+//        viewModel.event.collect { event ->
+//            when (event) {
+//                is StellarEmotionsViewModel.Event.ShowError -> {
+//                    // Only show a Toast/Snackbar if the background save failed
+//                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+//                }
+//            }
+//        }
+//    }
     // Represents the collection of emotions the user has selected.
     var selectedEmotions by remember {
         mutableStateOf(listOf<EmotionModel>())
@@ -410,7 +423,14 @@ fun StellarEmotionsScreen(
 
             // Bottom Button
             Button(
-                onClick = { /* TODO */ },
+                onClick = {
+                    // 1. Initiate the background data save
+                    //viewModel.onReadyToShipClicked(selectedEmotions)
+
+                    // 2. Immediately navigate to the next screen
+                    // This happens right away, without waiting for the Firebase call to finish.
+                    onNavigateToConstellations()
+                },
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -670,6 +690,6 @@ fun ColumnScope.VolumeSlider(
 @Composable
 private fun StellarEmotionsScreenPreview() {
     OrbitSoundKotlinTheme {
-        StellarEmotionsScreen(username = "User")
+        StellarEmotionsScreen(username = "User", onNavigateToConstellations = {})
     }
 }
