@@ -110,6 +110,7 @@ fun LibraryScreen(
 
         loading = true
         searchQuery = query
+        println("🎵 Starting search for: '$query'")
 
         CoroutineScope(Dispatchers.Main).launch {
             try {
@@ -117,8 +118,13 @@ fun LibraryScreen(
                     spotifyService.searchTracks(query)
                 }
                 songs = results
+                println("🎵 Search completed: ${songs.size} songs found")
+                songs.forEach { song ->
+                    println("🎵 Found song: ${song.title} by ${song.artist}")
+                }
             } catch (e: Exception) {
-                // Manejar error
+                println("❌ Search error: ${e.message}")
+                e.printStackTrace()
             } finally {
                 loading = false
             }
