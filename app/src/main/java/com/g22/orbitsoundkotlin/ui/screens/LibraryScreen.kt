@@ -188,8 +188,10 @@ fun LibraryScreen(
                         SongResultCard(
                             song = song,
                             onClick = {
+                                println("🎵 Clicked on song: ${song.title}")
                                 selectedTrack = song
                                 showModal = true
+                                println("🎵 Modal should show: $showModal")
                             }
                         )
                     }
@@ -261,9 +263,11 @@ fun LibraryScreen(
 
     // Modal para mostrar detalles de la canción
     if (showModal && selectedTrack != null) {
+        println("🎵 Rendering modal for: ${selectedTrack!!.title}")
         SongDetailModal(
             track = selectedTrack!!,
             onDismiss = { 
+                println("🎵 Modal dismissed")
                 showModal = false
                 selectedTrack = null
             }
@@ -704,7 +708,8 @@ fun SongResultCard(
     ) {
         VinylWithCover(
             albumArt = song.albumArt,
-            isSpinning = false
+            isSpinning = false,
+            modifier = Modifier.clickable { onClick() }
         )
 
         Spacer(modifier = Modifier.height(6.dp))
