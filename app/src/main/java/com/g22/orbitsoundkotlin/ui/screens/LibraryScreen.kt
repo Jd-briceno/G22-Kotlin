@@ -82,22 +82,22 @@ fun LibraryScreen(
             println("Error cargando canciones: ${e.message}")
             // Fallback a canciones locales si falla la API
             starlightSongs = listOf(
-                Track("Lofi Study", "Chill Beats", "3:45", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123"),
-                Track("Peaceful Morning", "Ambient Sounds", "4:12", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef124"),
-                Track("Coffee Shop Vibes", "Relaxing Music", "3:30", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef125")
+                Track("Lofi Study", "Chill Beats", "3:45", 225000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123"),
+                Track("Peaceful Morning", "Ambient Sounds", "4:12", 252000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef124"),
+                Track("Coffee Shop Vibes", "Relaxing Music", "3:30", 210000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef125")
             )
             djNovaSongs = listOf(
-                Track("Electronic Dreams", "DJ Nova", "4:20", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef126"),
-                Track("Dance Floor", "EDM Master", "3:55", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef127"),
-                Track("Neon Lights", "Synth Wave", "4:08", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef128")
+                Track("Electronic Dreams", "DJ Nova", "4:20", 260000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef126"),
+                Track("Dance Floor", "EDM Master", "3:55", 235000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef127"),
+                Track("Neon Lights", "Synth Wave", "4:08", 248000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef128")
             )
             eternalHitsSongs = listOf(
-                Track("Classic Rock Anthem", "Rock Legends", "5:15", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef129"),
-                Track("Timeless Melody", "Eternal Artists", "4:30", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef130")
+                Track("Classic Rock Anthem", "Rock Legends", "5:15", 315000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef129"),
+                Track("Timeless Melody", "Eternal Artists", "4:30", 270000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef130")
             )
             orbitCrewSongs = listOf(
-                Track("Space Journey", "Orbit Crew", "6:45", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef131"),
-                Track("Indie Vibes", "Alternative Sound", "3:42", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef132")
+                Track("Space Journey", "Orbit Crew", "6:45", 405000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef131"),
+                Track("Indie Vibes", "Alternative Sound", "3:42", 222000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef132")
             )
         } finally {
             playlistsLoading = false
