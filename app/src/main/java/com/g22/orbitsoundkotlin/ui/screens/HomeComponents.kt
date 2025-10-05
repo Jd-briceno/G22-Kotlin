@@ -42,8 +42,6 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 import kotlin.random.Random
 
-// NOTE: All these functions were moved from HomeScreen.kt and made `internal` to be shared within the module.
-
 @Composable
 internal fun OrbitSoundHeader(
     title: String,
@@ -285,7 +283,6 @@ internal fun StarField(
     }
 }
 
-// You may want to move other functions like painterByNameOrNull here as well
 @Composable
 internal fun painterByNameOrNull(name: String): Painter? {
     val context = LocalContext.current

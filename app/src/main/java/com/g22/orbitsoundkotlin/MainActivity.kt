@@ -42,6 +42,7 @@ import com.g22.orbitsoundkotlin.ui.screens.LoginScreen
 import com.g22.orbitsoundkotlin.ui.screens.ProfileScreen
 import com.g22.orbitsoundkotlin.ui.screens.SignupScreen
 import com.g22.orbitsoundkotlin.ui.screens.StellarEmotionsScreen
+import com.g22.orbitsoundkotlin.ui.screens.ConstellationsScreen
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 
 class MainActivity : ComponentActivity() {
@@ -357,7 +358,21 @@ private fun OrbitSoundApp() {
                 }
             }
             is AppDestination.StellarEmotions -> {
-                StellarEmotionsScreen(username = current.user.email ?: "User")
+                StellarEmotionsScreen(
+                    username = current.user.email?.split("@")?.firstOrNull() ?: "Captain",
+                    onNavigateToConstellations = {
+                        destination = AppDestination.Constellations(current.user)
+                    }
+                )
+            }
+            is AppDestination.Constellations -> {
+                val username = current.user.email?.split("@")?.firstOrNull() ?: "Captain"
+                ConstellationsScreen(
+                    username = username,
+                    onNavigateToHome = {
+                        destination = AppDestination.Home(current.user)
+                    }
+                )
             }
     is AppDestination.Library -> {
         LibraryScreen(
@@ -386,6 +401,7 @@ private sealed interface AppDestination {
     data class Interests(val user: AuthUser) : AppDestination
     data class Home(val user: AuthUser) : AppDestination
     data class StellarEmotions(val user: AuthUser) : AppDestination
+    data class Constellations(val user: AuthUser) : AppDestination
     data class Library(val user: AuthUser) : AppDestination
     data class Profile(val user: AuthUser) : AppDestination
 }
