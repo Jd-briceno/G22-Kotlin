@@ -224,6 +224,90 @@ class SpotifyService {
             emptyList()
         }
     }
+
+    // 🎵 Obtener playlists destacadas
+    suspend fun getFeaturedPlaylists(market: String = "US"): List<Playlist> = withContext(Dispatchers.IO) {
+        val token = getAccessToken() ?: return@withContext emptyList()
+        val playlists = mutableListOf<Playlist>()
+
+        try {
+            val url = URL("https://api.spotify.com/v1/browse/featured-playlists?market=$market&limit=10")
+            val connection = url.openConnection() as HttpURLConnection
+
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Authorization", "Bearer $token")
+
+            val responseCode = connection.responseCode
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = connection.inputStream.bufferedReader().readText()
+                val jsonResponse = gson.fromJson(response, JsonObject::class.java)
+                val playlistsData = jsonResponse.getAsJsonObject("playlists")
+                val items = playlistsData?.getAsJsonArray("items")
+
+                items?.forEach { item ->
+                    val playlistObj = item.asJsonObject
+                    val images = playlistObj.getAsJsonArray("images")
+                    val coverUrl = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+
+                    playlists.add(
+                        Playlist(
+                            title = playlistObj.get("name")?.asString ?: "",
+                            cover = coverUrl,
+                            id = playlistObj.get("id")?.asString,
+                            description = playlistObj.get("description")?.asString,
+                            trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Error getting featured playlists: ${e.message}")
+        }
+
+        playlists
+    }
+
+    // 🎵 Obtener playlists por categoría
+    suspend fun getCategoryPlaylists(categoryId: String, market: String = "US"): List<Playlist> = withContext(Dispatchers.IO) {
+        val token = getAccessToken() ?: return@withContext emptyList()
+        val playlists = mutableListOf<Playlist>()
+
+        try {
+            val url = URL("https://api.spotify.com/v1/browse/categories/$categoryId/playlists?market=$market&limit=10")
+            val connection = url.openConnection() as HttpURLConnection
+
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Authorization", "Bearer $token")
+
+            val responseCode = connection.responseCode
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = connection.inputStream.bufferedReader().readText()
+                val jsonResponse = gson.fromJson(response, JsonObject::class.java)
+                val playlistsData = jsonResponse.getAsJsonObject("playlists")
+                val items = playlistsData?.getAsJsonArray("items")
+
+                items?.forEach { item ->
+                    val playlistObj = item.asJsonObject
+                    val images = playlistObj.getAsJsonArray("images")
+                    val coverUrl = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+
+                    playlists.add(
+                        Playlist(
+                            title = playlistObj.get("name")?.asString ?: "",
+                            cover = coverUrl,
+                            id = playlistObj.get("id")?.asString,
+                            description = playlistObj.get("description")?.asString,
+                            trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Error getting category playlists: ${e.message}")
+        }
+
+        playlists
+    }
 }
 
 // Extensión para convertir JsonObject a Map

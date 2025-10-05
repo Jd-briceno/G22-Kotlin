@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +30,7 @@ import com.g22.orbitsoundkotlin.models.Playlist
 import com.g22.orbitsoundkotlin.services.SpotifyService
 import com.g22.orbitsoundkotlin.ui.components.VinylWithCover
 import kotlinx.coroutines.*
+import kotlinx.coroutines.async
 
 @Composable
 fun LibraryScreen(
@@ -437,7 +439,7 @@ fun SearchBarComposable(
                 )
             },
             modifier = Modifier
-       set(y = 15.dp)
+                .offset(y = 15.dp)
                 .fillMaxWidth()
                 .height(50.dp)
                 .padding(horizontal = 16.dp),
