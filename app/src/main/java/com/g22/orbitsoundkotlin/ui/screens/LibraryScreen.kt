@@ -93,13 +93,13 @@ fun LibraryScreen(
             Spacer(modifier = Modifier.height(40.dp))
         }
 
-        // Navbar
+        // Navbar (usando el mismo de HomeScreen)
         item {
-            NavbarComposable(
+            OrbitNavbar(
                 username = "Jay Walker",
-                title = "Lightning Ninja",
+                title = "Ninja",
                 subtitle = "Vinyl Library",
-                onProfileClick = onNavigateToProfile
+                profilePainter = null
             )
         }
 

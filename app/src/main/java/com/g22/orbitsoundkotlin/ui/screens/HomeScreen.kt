@@ -306,7 +306,7 @@ fun HomeScreen(    modifier: Modifier = Modifier,
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun OrbitNavbar(
+fun OrbitNavbar(
     username: String,
     title: String,
     subtitle: String? = null,
