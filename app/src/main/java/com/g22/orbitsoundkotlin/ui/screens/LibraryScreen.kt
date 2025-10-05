@@ -179,12 +179,14 @@ fun LibraryScreen(
         }
 
         // Songs results
+        println("🎵 Songs count: ${songs.size}")
         if (songs.isNotEmpty()) {
             item {
                 LazyRow(
                     modifier = Modifier.height(180.dp)
                 ) {
                     items(songs) { song ->
+                        println("🎵 Rendering song: ${song.title}")
                         SongResultCard(
                             song = song,
                             onClick = {
@@ -196,6 +198,14 @@ fun LibraryScreen(
                         )
                     }
                 }
+            }
+        } else {
+            item {
+                Text(
+                    text = "No songs found",
+                    color = Color.White,
+                    modifier = Modifier.padding(16.dp)
+                )
             }
         }
 
@@ -699,11 +709,15 @@ fun SongResultCard(
     song: Track,
     onClick: () -> Unit = {}
 ) {
+    println("🎵 SongResultCard rendering: ${song.title}")
     Column(
         modifier = Modifier
             .width(165.dp)
             .padding(8.dp)
-            .clickable { onClick() },
+            .clickable { 
+                println("🎵 SongResultCard clicked: ${song.title}")
+                onClick() 
+            },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         VinylWithCover(
