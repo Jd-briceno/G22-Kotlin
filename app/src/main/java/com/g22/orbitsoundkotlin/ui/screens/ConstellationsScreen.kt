@@ -51,7 +51,7 @@ import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 
 @Composable
 fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
-    // Animation for the star field background
+
     val infiniteTransition = rememberInfiniteTransition(label = "star_field_transition")
     val globalTime by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -64,9 +64,9 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
     )
 
     val starColors = listOf(
-        Color(0xFFE3F2FD), // Light Blue
-        Color(0xFFFFFDE7), // Light Yellow
-        Color(0xFFF3E5F5)  // Light Purple
+        Color(0xFFE3F2FD),
+        Color(0xFFFFFDE7),
+        Color(0xFFF3E5F5)
     )
 
     val containerBorderColor = Color.White.copy(alpha = 0.5f)
@@ -88,9 +88,9 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF010B19)) // Same dark background
+            .background(Color(0xFF010B19))
     ) {
-        // StarField background
+
         StarField(
             modifier = Modifier.fillMaxSize(),
             globalTime = globalTime,
@@ -103,14 +103,14 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 8.dp)
         ) {
-            // Header for the new screen
+
             OrbitSoundHeader(
                 title = "Constellations",
                 username = username,
                 subtitle = "Explore the celestial tapestry"
             )
 
-            // Main content area
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -118,7 +118,7 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                // Top row of constellations
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
@@ -135,7 +135,7 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                 }
 
 
-                // Central element
+
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
@@ -165,7 +165,6 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                     }
                 }
 
-                // Bottom row of constellations
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
@@ -181,7 +180,7 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                 }
             }
 
-            // Bottom Button
+
             Button(
                 onClick = {
                     if (selectedConstellation != null) {
@@ -219,7 +218,7 @@ fun ConstellationInfo(title: String, subtitle: String, description: String) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = title,
-                color = Color(0xFFFF8C00), // Orange color for the title
+                color = Color(0xFFFF8C00),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -234,7 +233,7 @@ fun ConstellationInfo(title: String, subtitle: String, description: String) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = description,
-                color = Color(0xFFFF8C00).copy(alpha = 0.8f), // Orange color for the description
+                color = Color(0xFFFF8C00).copy(alpha = 0.8f),
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )

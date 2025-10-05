@@ -44,15 +44,13 @@ import kotlin.math.sin
 import com.g22.orbitsoundkotlin.models.EmotionModel
 import com.g22.orbitsoundkotlin.models.EmotionControlState
 import com.g22.orbitsoundkotlin.models.SliderEmotionControlState
-import androidx.compose.foundation.clickable // New Import
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import kotlin.math.roundToInt // New Import
+import kotlin.math.roundToInt
 import com.g22.orbitsoundkotlin.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-
-// Define custom colors for better reusability
 private val containerBorderColor = Color.White.copy(alpha = 0.4f)
 private val containerShape = RoundedCornerShape(16.dp)
 private val accentRed = Color(0xFFFF4747)
@@ -67,7 +65,7 @@ val anxietyKnobEmotions = mapOf(
         description = "A knot of dread in the stomach",
         color = Color(0xFF5D48D3),
         iconRes = R.drawable.anxiety,
-        source = "knob1" // Assign a source
+        source = "knob1"
     ),
     "Anger" to EmotionModel(
         id = "anger",
@@ -99,7 +97,7 @@ val anxietyKnobEmotions = mapOf(
         description = "Heat rising to my cheeks",
         color = Color(0xFFB53F5F),
         iconRes = R.drawable.embarrassment,
-        source = "knob2" // Assign a different source for the second knob
+        source = "knob2"
     ),
     "Love" to EmotionModel(
         id = "love",
@@ -123,7 +121,7 @@ val anxietyKnobEmotions = mapOf(
         description = "A bright spark bursting within",
         color = Color(0xFFFECA39),
         iconRes = R.drawable.joy,
-        source = "slider1" // And another for the slider
+        source = "slider1"
     ),
     "Sadness" to EmotionModel(
         id = "sadness",
@@ -147,26 +145,19 @@ fun getEmotionFromKnobAngle(
     angle: Float,
     emotionLabels: List<String>
 ): EmotionModel {
-    // Normalize angle to 0-360 range, starting at the top position (Anxiety)
-    // The starting position (initialAngle) is -45f in the EmotionKnob.
-    // Let's treat the -45f position (Anxiety) as the start of the sweep.
-    // Normalized angle where 0 is the center of Anxiety and 270 is the center of Envy.
-    var normalizedAngle = (angle + 45f) % 360 // Shift to make -45f (Anxiety) = 0f
+
+    var normalizedAngle = (angle + 45f) % 360
     if (normalizedAngle < 0) normalizedAngle += 360f
 
-    val sectorSize = 270f / emotionLabels.size // 270 / 4 = 67.5 degrees per sector
+    val sectorSize = 270f / emotionLabels.size
 
     return when {
-        // Sector 1: Anxiety (approx 0 to 67.5)
         normalizedAngle in 0f..sectorSize -> anxietyKnobEmotions[emotionLabels[0]]!!
 
-        // Sector 2: Envy (approx 67.5 to 135)
         normalizedAngle in sectorSize..sectorSize * 2 -> anxietyKnobEmotions[emotionLabels[3]]!!
 
-        // Sector 3: Anger (approx 135 to 202.5)
         normalizedAngle in sectorSize * 2..sectorSize * 3 -> anxietyKnobEmotions[emotionLabels[2]]!!
 
-        // Sector 4: Disgust (approx 202.5 to 270)
         else -> anxietyKnobEmotions[emotionLabels[1]]!!
     }
 }
@@ -178,11 +169,11 @@ fun getEmotionFromKnob2Angle(
     if (normalizedAngle < 0) normalizedAngle += 360f
     val sectorSize = 180f / 3
     return when (angle.roundToInt()) {
-        -45 -> anxietyKnobEmotions["Embarrassment"]!! // Top-Start
-        45 -> anxietyKnobEmotions["Embarrassment"]!!  // Top-End
-        135 -> anxietyKnobEmotions["Love"]!!          // Bottom-End
-        225 -> anxietyKnobEmotions["Boredom"]!!       // Bottom-Start
-        else -> anxietyKnobEmotions["Embarrassment"]!! // Default to initial state
+        -45 -> anxietyKnobEmotions["Embarrassment"]!!
+        45 -> anxietyKnobEmotions["Embarrassment"]!!
+        135 -> anxietyKnobEmotions["Love"]!!
+        225 -> anxietyKnobEmotions["Boredom"]!!
+        else -> anxietyKnobEmotions["Embarrassment"]!!
     }
 }
 
@@ -190,16 +181,13 @@ fun getEmotionFromSliderValue(
     value: Float
 ): EmotionModel {
     return when {
-        // Top Third: Joy (Value > 0.66)
         value >= 0.66f -> anxietyKnobEmotions["Joy"]!!
-        // Middle Third: Sadness (Value > 0.33 and <= 0.66)
         value > 0.33f && value < 0.66f -> anxietyKnobEmotions["Sadness"]!!
-        // Bottom Third: Fear (Value <= 0.33)
         else -> anxietyKnobEmotions["Fear"]!!
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class) // Opt-in for Slider API
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StellarEmotionsScreen(
     username: String,
@@ -208,42 +196,39 @@ fun StellarEmotionsScreen(
 ) {
     val context = LocalContext.current
 
-//    // 1. Collect only the error/message events from the ViewModel
 //    LaunchedEffect(key1 = Unit) {
 //        viewModel.event.collect { event ->
 //            when (event) {
 //                is StellarEmotionsViewModel.Event.ShowError -> {
-//                    // Only show a Toast/Snackbar if the background save failed
 //                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
 //                }
 //            }
 //        }
 //    }
-    // Represents the collection of emotions the user has selected.
     var selectedEmotions by remember {
         mutableStateOf(listOf<EmotionModel>())
     }
-    // Keeps track of the last selected emotion to show in the main display
+
     var lastSelectedEmotion by remember {
         mutableStateOf<EmotionModel?>(null)
     }
-    // Represents the current selection on the FIRST KNOB
+
     val initialKnob1Emotion = anxietyKnobEmotions["Anxiety"]!!
     var knob1State by remember {
         mutableStateOf(
             EmotionControlState(
                 selectedEmotion = initialKnob1Emotion,
-                angle = -45f // Corresponds to Anxiety's position
+                angle = -45f
             )
         )
     }
-    // Represents the current selection on the SECOND KNOB
+
     val initialKnob2Emotion = anxietyKnobEmotions["Embarrassment"]!!
     var knob2State by remember {
         mutableStateOf(
             EmotionControlState(
                 selectedEmotion = initialKnob2Emotion,
-                angle = -45f // Corresponds to Embarrassment's position
+                angle = -45f
             )
         )
     }
@@ -252,36 +237,31 @@ fun StellarEmotionsScreen(
         mutableStateOf(
             SliderEmotionControlState(
                 selectedEmotion = initialSliderEmotion,
-                value = 0.7f // Corresponds to Joy's initial position
+                value = 0.7f
             )
         )
     }
 
-    // Function to update *both* the array of selected emotions *and* the last selected emotion
     val updateSelectedEmotionsAndLast: (EmotionModel) -> Unit = { newEmotion ->
         selectedEmotions = selectedEmotions.toMutableList().apply {
-            // Find the index of an existing emotion from the same source
             val existingIndex = indexOfFirst { it.source == newEmotion.source }
 
             if (existingIndex != -1) {
-                // If found, replace it
                 this[existingIndex] = newEmotion
             } else {
-                // Otherwise, add the new emotion
                 add(newEmotion)
             }
         }
-        // KEY CHANGE: Update the last selected emotion here
+
         lastSelectedEmotion = newEmotion
     }
-    // Add initial emotions from all controls when the screen first composes
+
     LaunchedEffect(Unit) {
         val initialEmotions = mutableListOf<EmotionModel>()
         val initialKnob1Emotion = anxietyKnobEmotions["Anxiety"]!!
         val initialKnob2Emotion = anxietyKnobEmotions["Embarrassment"]!!
         val initialSliderEmotion = anxietyKnobEmotions["Joy"]!!
 
-        // Add initial emotions, checking if an emotion from that source already exists (for safety)
         if (selectedEmotions.none { it.source == initialKnob1Emotion.source }) {
             initialEmotions.add(initialKnob1Emotion)
         }
@@ -294,12 +274,12 @@ fun StellarEmotionsScreen(
 
         selectedEmotions = selectedEmotions + initialEmotions
 
-        // KEY CHANGE: Set the last selected emotion to one of the initial values, e.g., the last one added
+
         if (lastSelectedEmotion == null && initialEmotions.isNotEmpty()) {
-            lastSelectedEmotion = initialEmotions.last() // Set to Joy as an arbitrary initial 'last'
+            lastSelectedEmotion = initialEmotions.last()
         }
     }
-    // Animation for the star field background
+
     val infiniteTransition = rememberInfiniteTransition(label = "star_field_transition")
     val globalTime by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -312,9 +292,9 @@ fun StellarEmotionsScreen(
     )
 
     val starColors = listOf(
-        Color(0xFFE3F2FD), // Light Blue
-        Color(0xFFFFFDE7), // Light Yellow
-        Color(0xFFF3E5F5)  // Light Purple
+        Color(0xFFE3F2FD),
+        Color(0xFFFFFDE7),
+        Color(0xFFF3E5F5)
     )
 
     Box(
@@ -322,7 +302,7 @@ fun StellarEmotionsScreen(
             .fillMaxSize()
             .background(Color(0xFF010B19))
     ) {
-        // Reused StarField background
+
         StarField(
             modifier = Modifier.fillMaxSize(),
             globalTime = globalTime,
@@ -333,39 +313,39 @@ fun StellarEmotionsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 8.dp)
-                // Apply padding to respect the system status and navigation bars
+
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
-            // Reused Header component
+
             OrbitSoundHeader(
-                title = "Emotions", // Updated title
+                title = "Emotions",
                 username = username,
-                subtitle = "How are you feeling today captain?", // Updated subtitle
+                subtitle = "How are you feeling today captain?",
             )
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f) // Allow row to fill available space
+                    .weight(1f)
                     .padding(top = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Left Panel
+
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // PASS THE CURRENTLY SELECTED EMOTION
+
                     EmotionDisplay(
                         currentEmotion = lastSelectedEmotion ?: initialKnob1Emotion
                     )
-                    // PASS THE LIST OF SELECTED EMOTIONS
+
                     EmotionList(
                         selectedEmotions = selectedEmotions
                     )
 
-                    // UPDATED KNOB 1
+
                     EmotionKnob(
                         labelTop = "Anxiety",
                         labelBottom = "Anger",
@@ -385,7 +365,7 @@ fun StellarEmotionsScreen(
                             updateSelectedEmotionsAndLast(newEmotion)
                         }
                     )
-                    // UPDATED KNOB 2
+
                     EmotionKnob(
                         labelTop = "Embarrassment",
                         labelBottom = "Love",
@@ -402,9 +382,9 @@ fun StellarEmotionsScreen(
                         }
                     )
                 }
-                // Right Panel - Now wrapped in a Column to provide the correct scope
+
                 Column(modifier = Modifier.weight(1f)) {
-                    // ⭐ UPDATED SLIDER CALL
+
                     VolumeSlider(
                         sliderPosition = sliderState.value,
                         selectedEmotion = sliderState.selectedEmotion,
@@ -414,21 +394,18 @@ fun StellarEmotionsScreen(
                                 selectedEmotion = newEmotion,
                                 value = newValue
                             )
-                            // Update the main list of selected emotions
+
                             updateSelectedEmotionsAndLast(newEmotion)
                         }
                     )
                 }
             }
 
-            // Bottom Button
             Button(
                 onClick = {
-                    // 1. Initiate the background data save
+
                     //viewModel.onReadyToShipClicked(selectedEmotions)
 
-                    // 2. Immediately navigate to the next screen
-                    // This happens right away, without waiting for the Firebase call to finish.
                     onNavigateToConstellations()
                 },
                 shape = RoundedCornerShape(12.dp),
@@ -454,11 +431,10 @@ fun EmotionDisplay(currentEmotion: EmotionModel) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Load drawable resource at composition time
         Icon(
             painter = painterResource(id = currentEmotion.iconRes),
             contentDescription = currentEmotion.name,
-            tint = currentEmotion.color, // will tint vector drawables
+            tint = currentEmotion.color,
             modifier = Modifier.size(64.dp)
         )
 
@@ -484,10 +460,10 @@ fun EmotionList(selectedEmotions: List<EmotionModel>) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Iterate over selected emotions to display them
+
         if (selectedEmotions.isNotEmpty()) {
             selectedEmotions.forEach { emotion ->
-                // Load the drawable resource at composition time
+
                 Icon(
                     painter = painterResource(id = emotion.iconRes),
                     contentDescription = emotion.name,
@@ -496,7 +472,7 @@ fun EmotionList(selectedEmotions: List<EmotionModel>) {
                 )
             }
         } else {
-            // If the list is empty, show a placeholder
+
             Text(
                 text = "No emotions selected",
                 color = Color.White.copy(alpha = 0.7f)
@@ -515,22 +491,20 @@ fun EmotionKnob(
     knobColor: Color,
     initialAngle: Float,
     knobRadius: Dp = 50.dp,
-    // NEW: Lambda to report angle change back to the parent
-    onAngleChange: ((Float) -> Unit)? = null // Optional for non-interactive knobs
+
+    onAngleChange: ((Float) -> Unit)? = null
 ) {
-    // Current rotation state, managed by the parent via initialAngle,
-    // but the clickable event is handled here.
+
     val currentRotation = remember(initialAngle) { mutableStateOf(initialAngle) }
 
-    // Logic to cycle the angle by 90 degrees on tap
     val onKnobClick = {
         if (onAngleChange != null) {
-            // Cycle through the four 90-degree steps (-45, 45, 135, 225)
+
             val newAngle = when (currentRotation.value.roundToInt()) {
-                -45 -> 45f    // Anxiety -> Disgust
-                45 -> 135f   // Disgust -> Anger
-                135 -> 225f  // Anger -> Envy
-                else -> -45f  // Envy -> Anxiety
+                -45 -> 45f
+                45 -> 135f
+                135 -> 225f
+                else -> -45f
             }
             currentRotation.value = newAngle
             onAngleChange.invoke(newAngle)
@@ -543,7 +517,7 @@ fun EmotionKnob(
             .padding(vertical = 16.dp),
         contentAlignment = Alignment.Center
     ) {
-        // --- MODIFIED: Labels are now aligned to the corners ---
+
         Text(text = labelTop, color = Color.White, modifier = Modifier.align(Alignment.TopStart))
         Text(text = labelLeft, color = Color.White, modifier = Modifier.align(Alignment.BottomStart).padding(top = knobRadius * 2 + 24.dp))
         labelRight?.let {
@@ -555,15 +529,15 @@ fun EmotionKnob(
             modifier = Modifier.align(Alignment.BottomEnd).padding(top = knobRadius * 2 + 24.dp)
         )
 
-        // Knob
+
         Box(
             modifier = Modifier
                 .size(knobRadius * 2)
                 .padding(top = 24.dp)
-                .clickable(enabled = onAngleChange != null, onClick = onKnobClick), // ADDED CLICKABLE
+                .clickable(enabled = onAngleChange != null, onClick = onKnobClick),
             contentAlignment = Alignment.Center
         ) {
-            // Ticks around the knob (remain the same)
+
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val center = this.center
                 val radius = size.minDimension / 2.0f
@@ -575,15 +549,15 @@ fun EmotionKnob(
                     drawCircle(color = Color.White, radius = 4f, center = Offset(x, y))
                 }
             }
-            // The colored circle of the knob
+
             Box(
                 modifier = Modifier
                     .fillMaxSize(0.8f)
                     .clip(CircleShape)
-                    .background(knobColor) // Use the dynamic color
-                    .rotate(currentRotation.value) // Use the dynamic angle
+                    .background(knobColor)
+                    .rotate(currentRotation.value)
             ) {
-                // The indicator line on the knob
+
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -598,17 +572,16 @@ fun EmotionKnob(
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class) // Opt-in for Slider API
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ColumnScope.VolumeSlider(
     sliderPosition: Float,
     selectedEmotion: EmotionModel,
-    onValueChange: (Float) -> Unit // State-hoisting for value change
+    onValueChange: (Float) -> Unit
 ) {
-    // The Column now receives the weight from its parent, and it will fill the height.
     Column(
         modifier = Modifier
-            .weight(1f) // Use weight to fill available space
+            .weight(1f)
             .fillMaxHeight()
             .border(1.dp, containerBorderColor, containerShape)
             .padding(horizontal = 16.dp, vertical = 24.dp),
@@ -618,9 +591,9 @@ fun ColumnScope.VolumeSlider(
             modifier = Modifier
                 .fillMaxHeight()
                 .weight(1f)
-                .padding(horizontal = 16.dp) // Add some padding for the slider and ticks
+                .padding(horizontal = 16.dp)
         ) {
-            // Ticks and Labels
+
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val tickCount = 20
                 val canvasHeight = size.height
@@ -643,15 +616,14 @@ fun ColumnScope.VolumeSlider(
                 }
             }
 
-            // Box to contain and center the vertical slider
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Slider(
                     value = sliderPosition,
-                    onValueChange = onValueChange, // Use the hoisted onValueChange lambda
+                    onValueChange = onValueChange,
                     modifier = Modifier
                         // REMOVED .width(300.dp)
-                        .fillMaxWidth() // New: Make it fill the available width (which becomes the vertical length)
-                        .rotate(-90f),    // then rotate it to be vertical
+                        .fillMaxWidth()
+                        .rotate(-90f),
                     colors = SliderDefaults.colors(
                         thumbColor = selectedEmotion.color,
                         activeTrackColor = Color.LightGray.copy(alpha = 0.7f),
@@ -660,16 +632,14 @@ fun ColumnScope.VolumeSlider(
                     thumb = {
                         Box(
                             modifier = Modifier
-                                .rotate(90f) // Counter-rotate the thumb
+                                .rotate(90f)
                                 .size(width = 24.dp, height = 40.dp)
-                                .background(selectedEmotion.color, RoundedCornerShape(8.dp)) // ⭐ Use emotion color
+                                .background(selectedEmotion.color, RoundedCornerShape(8.dp))
                         )
                     }
                 )
             }
 
-
-            // Labels aligned with the slider
             Box(modifier = Modifier.fillMaxSize()) {
                 Text(text = "Joy", color = accentYellow, modifier = Modifier.align(Alignment.TopEnd))
                 Text(text = "Sadness", color = Color.White, modifier = Modifier.align(Alignment.CenterEnd))

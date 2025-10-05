@@ -9,10 +9,9 @@ class FirebaseEmotionRepository @Inject constructor(
 
     override suspend fun saveEmotionData(submission: EmotionSubmission): Result<Unit> {
         return try {
-            // Reference the 'emotion_submissions' collection and add a new document
             firestore.collection("emotion_submissions")
                 .add(submission)
-                .await() // Converts the Firebase Task into a Kotlin suspend function
+                .await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

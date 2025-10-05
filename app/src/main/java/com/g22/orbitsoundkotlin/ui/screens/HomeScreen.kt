@@ -507,7 +507,6 @@ private fun OrbitNavbar(
 
 @Composable
 private fun Astronaut(floatYOffsetDp: Dp, heightDp: Dp) {
-    // REQUIRED_IMAGE: astronaut_home.png  ← súbelo a res/drawable
     val p = painterByNameOrNull("astronaut_home")
     Box(modifier = Modifier.height(heightDp)) {
         if (p != null) {
@@ -535,7 +534,7 @@ private fun Astronaut(floatYOffsetDp: Dp, heightDp: Dp) {
 
 @Composable
 private fun PlayerPill(
-    albumName: String, // nombre del drawable SIN extensión
+    albumName: String,
     // REQUIRED_IMAGE: <albumName>.jpg | .png
     songTitle: String,
     artist: String,
@@ -637,7 +636,7 @@ private fun ShortcutsFive(
 
 @Composable
 private fun RowScope.ShortcutTile(
-    spec: ShortcutSpec,    onShortcutClick: () -> Unit // <-- 1. Add this parameter
+    spec: ShortcutSpec,    onShortcutClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Column(
@@ -651,7 +650,7 @@ private fun RowScope.ShortcutTile(
                     bounded = true,
                     color = Color.White.copy(alpha = 0.2f)
                 ),
-                onClick = onShortcutClick // <-- 2. Use it here
+                onClick = onShortcutClick
             )
             .padding(horizontal = 6.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -788,6 +787,5 @@ private fun painterByNameOrNull(name: String): Painter? {
 
 @Suppress("MissingPermission")
 private fun getLastKnownLocation(context: Context): Location? {
-    // Si lo quieres real, añade Play Services Location y usa FusedLocationProviderClient.
     return null
 }
