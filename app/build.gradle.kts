@@ -17,6 +17,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // 🔑 Variables de entorno para Spotify
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${getSpotifyClientId()}\"")
+        buildConfigField("String", "SPOTIFY_CLIENT_SECRET", "\"${getSpotifyClientSecret()}\"")
     }
 
     buildTypes {
@@ -79,4 +83,13 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+// 🔑 Funciones para leer variables de entorno
+fun getSpotifyClientId(): String {
+    return project.findProperty("SPOTIFY_CLIENT_ID") as? String ?: "YOUR_SPOTIFY_CLIENT_ID"
+}
+
+fun getSpotifyClientSecret(): String {
+    return project.findProperty("SPOTIFY_CLIENT_SECRET") as? String ?: "YOUR_SPOTIFY_CLIENT_SECRET"
 }

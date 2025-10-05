@@ -1,118 +1,131 @@
 package com.g22.orbitsoundkotlin.ui.components
 
-import android.content.Context
-import android.graphics.*
-import android.util.AttributeSet
-import android.view.View
-import androidx.core.content.ContextCompat
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.g22.orbitsoundkotlin.R
 
-class VinylWithCover @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
-
-    private var albumArt: String? = null
-    private var isSpinning: Boolean = false
-    private var rotationAngle: Float = 0f
-
-    private val vinylPaint = Paint().apply {
-        color = Color.parseColor("#2C2C2C")
-        style = Paint.Style.FILL
-        isAntiAlias = true
-    }
-
-    private val borderPaint = Paint().apply {
-        color = Color.parseColor("#B4B1B8")
-        style = Paint.Style.STROKE
-        strokeWidth = 4f
-        isAntiAlias = true
-    }
-
-    private val centerPaint = Paint().apply {
-        color = Color.parseColor("#010B19")
-        style = Paint.Style.FILL
-        isAntiAlias = true
-    }
-
-    init {
-        // Iniciar animación de rotación si está spinning
-        if (isSpinning) {
-            startSpinning()
+/**
+ * VinylWithCover - Componente que muestra una funda de vinilo con el vinilo sobresaliendo
+ * Basado en el componente Flutter del mismo nombre
+ */
+@Composable
+fun VinylWithCover(
+    albumArt: String,
+    vinylArt: String = "",
+    isSpinning: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(width = 165.dp, height = 120.dp)
+    ) {
+        // 🎶 Vinilo detrás, sobresaliendo horizontalmente
+        Box(
+            modifier = Modifier
+                .offset(x = 42.dp)
+                .size(120.dp)
+                .background(Color(0xFF0D0D0D), CircleShape)
+                .border(1.dp, Color(0xFFE9E8EE).copy(alpha = 0.8f), CircleShape)
+        ) {
+            // Surcos del vinilo
+            Canvas(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val center = Offset(size.width / 2, size.height / 2)
+                val radius = size.width / 2
+                
+                // Surcos concéntricos
+                val groovePaint = androidx.compose.ui.graphics.Paint().apply {
+                    color = Color(0xFFB4B1B8).copy(alpha = 0.35f)
+                    style = androidx.compose.ui.graphics.PaintingStyle.Stroke
+                    strokeWidth = 0.6f
+                }
+                
+                val inner = radius * 0.36f
+                for (r in inner..(radius * 0.96f) step 1.6f) {
+                    drawCircle(center, r, groovePaint)
+                }
+                
+                // Aros más marcados
+                val boldPaint = androidx.compose.ui.graphics.Paint().apply {
+                    color = Color(0xFFE9E8EE).copy(alpha = 0.5f)
+                    style = androidx.compose.ui.graphics.PaintingStyle.Stroke
+                    strokeWidth = 1.0f
+                }
+                
+                for (r in (inner + 8)..(radius * 0.96f) step 8f) {
+                    drawCircle(center, r, boldPaint)
+                }
+            }
+            
+            // Etiqueta del centro
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .align(Alignment.Center)
+                    .background(Color(0xFF222222), CircleShape)
+                    .border(1.dp, Color(0xFFB4B1B8), CircleShape)
+            ) {
+                val imageUrl = if (vinylArt.isNotEmpty()) vinylArt else albumArt
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Vinyl Label",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
-    }
 
-    fun setAlbumArt(albumArt: String) {
-        this.albumArt = albumArt
-        invalidate()
-    }
-
-    fun setSpinning(spinning: Boolean) {
-        this.isSpinning = spinning
-        if (spinning) {
-            startSpinning()
-        } else {
-            stopSpinning()
-        }
-    }
-
-    private fun startSpinning() {
-        // Implementar animación de rotación
-        // Por simplicidad, aquí solo invalidamos la vista
-        postInvalidate()
-    }
-
-    private fun stopSpinning() {
-        // Detener animación
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-
-        val centerX = width / 2f
-        val centerY = height / 2f
-        val radius = minOf(width, height) / 2f - 10f
-
-        // Guardar el estado del canvas
-        canvas.save()
-
-        // Aplicar rotación si está spinning
-        if (isSpinning) {
-            canvas.rotate(rotationAngle, centerX, centerY)
+        // 📀 Funda con la portada del álbum
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .shadow(
+                    elevation = 6.dp,
+                    shape = RoundedCornerShape(0.dp),
+                    ambientColor = Color.Black.copy(alpha = 0.5f),
+                    spotColor = Color.Black.copy(alpha = 0.5f)
+                )
+                .background(Color(0xFF010B19), RoundedCornerShape(0.dp))
+                .border(1.5.dp, Color.White.copy(alpha = 0.24f), RoundedCornerShape(0.dp))
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(albumArt)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Album Cover",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
         }
 
-        // Dibujar el vinilo
-        canvas.drawCircle(centerX, centerY, radius, vinylPaint)
-        canvas.drawCircle(centerX, centerY, radius, borderPaint)
-
-        // Dibujar círculos concéntricos
-        val innerRadius1 = radius * 0.8f
-        val innerRadius2 = radius * 0.6f
-        val innerRadius3 = radius * 0.4f
-
-        borderPaint.strokeWidth = 2f
-        canvas.drawCircle(centerX, centerY, innerRadius1, borderPaint)
-        canvas.drawCircle(centerX, centerY, innerRadius2, borderPaint)
-        canvas.drawCircle(centerX, centerY, innerRadius3, borderPaint)
-
-        // Dibujar el centro
-        val centerRadius = radius * 0.15f
-        canvas.drawCircle(centerX, centerY, centerRadius, centerPaint)
-        canvas.drawCircle(centerX, centerY, centerRadius, borderPaint)
-
-        // Restaurar el estado del canvas
-        canvas.restore()
-
-        // TODO: Aquí se cargaría la imagen del álbum si está disponible
-        // Por ahora solo dibujamos el vinilo básico
-    }
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val size = minOf(
-            MeasureSpec.getSize(widthMeasureSpec),
-            MeasureSpec.getSize(heightMeasureSpec)
+        // 📏 Línea gris clarita superior del mismo ancho que la funda
+        Box(
+            modifier = Modifier
+                .size(width = 120.dp, height = 1.5.dp)
+                .background(Color.White.copy(alpha = 0.24f))
         )
-        setMeasuredDimension(size, size)
     }
 }

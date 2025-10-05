@@ -12,8 +12,8 @@ import java.net.URL
 import java.util.Random
 
 class SpotifyService {
-    private val clientId = "YOUR_SPOTIFY_CLIENT_ID"
-    private val clientSecret = "YOUR_SPOTIFY_CLIENT_SECRET"
+    private val clientId = BuildConfig.SPOTIFY_CLIENT_ID
+    private val clientSecret = BuildConfig.SPOTIFY_CLIENT_SECRET
     private val gson = Gson()
 
     // 🌎 Lista de mercados (random para variar resultados)

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.g22.orbitsoundkotlin.models.Track
 import com.g22.orbitsoundkotlin.models.Playlist
 import com.g22.orbitsoundkotlin.services.SpotifyService
+import com.g22.orbitsoundkotlin.ui.components.VinylWithCover
 import kotlinx.coroutines.*
 
 @Composable
@@ -182,15 +183,14 @@ fun LibraryScreen(
             }
         }
 
-        // Playlist Sections (con títulos de la primera imagen)
+        // Playlist Sections (igual que en Flutter)
         item {
             PlaylistSection(
                 title = "✨ Starlight Suggestions",
                 playlists = listOf(
-                    Playlist("Hunting soul", "https://example.com/hunting-soul.jpg"),
-                    Playlist("Your idol", "https://example.com/your-idol.jpg"),
-                    Playlist("7 minutes in hell", "https://example.com/7-minutes.jpg"),
-                    Playlist("Roll a d20", "assets/images/Dungeons.jpg")
+                    Playlist("Roll a d20", "assets/images/Dungeons.jpg"),
+                    Playlist("Good Vibes", "assets/images/Good.jpg"),
+                    Playlist("Jazz Nights", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123")
                 )
             )
         }
@@ -199,10 +199,9 @@ fun LibraryScreen(
             PlaylistSection(
                 title = "🎧 DJ Nova's Set",
                 playlists = listOf(
-                    Playlist("Knife to the Throat", "https://example.com/knife-throat.jpg"),
-                    Playlist("Takedown", "https://example.com/takedown.jpg"),
-                    Playlist("JOLT", "https://example.com/jolt.jpg"),
-                    Playlist("Lofi", "assets/images/Kamui.jpg")
+                    Playlist("Lofi", "assets/images/Lofi.jpg"),
+                    Playlist("Study", "assets/images/Study.jpg"),
+                    Playlist("Jazz Nights", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123")
                 )
             )
         }
@@ -211,10 +210,8 @@ fun LibraryScreen(
             PlaylistSection(
                 title = "💖 Eternal Hits",
                 playlists = listOf(
-                    Playlist("Vengeance", "https://example.com/vengeance.jpg"),
-                    Playlist("Dark will fall", "https://example.com/dark-will-fall.jpg"),
-                    Playlist("Vortex", "https://example.com/vortex.jpg"),
-                    Playlist("Electronic Sunset", "https://i.scdn.co/image/ab67616d0000b273e59f65e3c9131d123456aaaa")
+                    Playlist("Hunting soul", "assets/images/Hunting.jpg"),
+                    Playlist("Ruined King", "assets/images/Ruined.jpg")
                 )
             )
         }
@@ -223,10 +220,8 @@ fun LibraryScreen(
             PlaylistSection(
                 title = "🎧 Orbit Crew Playlist",
                 playlists = listOf(
-                    Playlist("Floating Points", "https://example.com/floating-points.jpg"),
-                    Playlist("Ninja Kahui", "https://example.com/ninja-kahui.jpg"),
-                    Playlist("Anime Character", "https://example.com/anime-character.jpg"),
-                    Playlist("Rock Classics", "https://i.scdn.co/image/ab67616d0000b27311223344aabbccddeeff0011")
+                    Playlist("I Believe", "assets/images/UFO.jpg"),
+                    Playlist("Indie Dreams", "assets/images/Indie.jpg")
                 )
             )
         }
@@ -370,20 +365,36 @@ fun NavbarComposable(
     }
 }
 
-// Composable para Search Bar (diseño de la primera imagen)
+// Composable para Search Bar (igual que en Flutter)
 @Composable
 fun SearchBarComposable(
     onSearch: (String) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(50.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .height(90.dp)
     ) {
-        // Campo de texto (sin el icono superpuesto)
+        // Fondo de la barra de búsqueda (rectángulo redondeado)
+        Box(
+            modifier = Modifier
+                .offset(y = 15.dp)
+                .fillMaxWidth()
+                .height(50.dp)
+                .background(
+                    Color(0xFF010B19),
+                    RoundedCornerShape(25.dp)
+                )
+                .border(
+                    1.dp,
+                    Color(0xFFB4B1B8),
+                    RoundedCornerShape(25.dp)
+                )
+        )
+
+        // Campo de texto
         OutlinedTextField(
             value = query,
             onValueChange = {
@@ -399,17 +410,18 @@ fun SearchBarComposable(
                 )
             },
             modifier = Modifier
-                .weight(1f)
-                .height(50.dp),
+                .offset(y = 15.dp)
+                .fillMaxWidth()
+                .height(50.dp)
+                .padding(horizontal = 16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFFB4B1B8),
-                unfocusedBorderColor = Color(0xFFB4B1B8),
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
                 focusedTextColor = Color(0xFFE9E8EE),
                 unfocusedTextColor = Color(0xFFE9E8EE),
-                focusedContainerColor = Color(0xFF010B19),
-                unfocusedContainerColor = Color(0xFF010B19)
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent
             ),
-            shape = RoundedCornerShape(25.dp),
             textStyle = androidx.compose.ui.text.TextStyle(
                 fontSize = 15.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
@@ -417,63 +429,82 @@ fun SearchBarComposable(
             )
         )
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Icono de búsqueda separado (como en la primera imagen)
+        // Círculos concéntricos (como en Flutter)
         Box(
             modifier = Modifier
-                .size(50.dp)
-                .background(
-                    Color(0xFFB4B1B8),
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
+                .offset(x = 16.dp, y = 15.dp)
+                .align(Alignment.CenterEnd)
         ) {
+            // Círculo exterior
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .background(Color(0xFF010B19), CircleShape)
+                    .border(1.dp, Color(0xFFE9E8EE), CircleShape)
+            )
+
+            // Círculo medio
+            Box(
+                modifier = Modifier
+                    .size(68.dp)
+                    .background(Color.Transparent, CircleShape)
+                    .border(1.dp, Color(0xFFB4B1B8), CircleShape)
+                    .align(Alignment.Center)
+            )
+
+            // Círculo interior
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(Color.Transparent, CircleShape)
+                    .border(1.dp, Color(0xFFB4B1B8), CircleShape)
+                    .align(Alignment.Center)
+            )
+
+            // Círculo central
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color(0xFFB4B1B8), CircleShape)
+                    .align(Alignment.Center)
+            )
+
+            // Icono de lupa
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Search",
                 tint = Color(0xFF010B19),
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier
+                    .size(20.dp)
+                    .align(Alignment.Center)
             )
         }
     }
 }
 
-// Composable para Song Result Card
+// Composable para Song Result Card (igual que en Flutter)
 @Composable
 fun SongResultCard(song: Track) {
     Column(
         modifier = Modifier
-            .width(100.dp)
+            .width(165.dp)
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Vinyl Cover placeholder
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .background(
-                    Color(0xFF2C2C2C),
-                    CircleShape
-                )
+        VinylWithCover(
+            albumArt = song.albumArt,
+            isSpinning = false
         )
 
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = song.title,
+            text = "${song.title}\n${song.artist}",
             color = Color(0xFFE9E8EE),
             fontSize = 12.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Text(
-            text = song.artist,
-            color = Color(0xFFE9E8EE),
-            fontSize = 12.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }
@@ -503,37 +534,19 @@ fun PlaylistSection(
     }
 }
 
-// Composable para Playlist Card (diseño de la primera imagen)
+// Composable para Playlist Card (igual que en Flutter)
 @Composable
 fun PlaylistCard(playlist: Playlist) {
     Column(
         modifier = Modifier
-            .width(120.dp)
+            .width(165.dp)
             .padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Cover con bordes redondeados más pronunciados
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .background(
-                    Color(0xFF2C2C2C),
-                    RoundedCornerShape(12.dp)
-                )
-                .border(
-                    1.dp,
-                    Color(0xFFB4B1B8).copy(alpha = 0.3f),
-                    RoundedCornerShape(12.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            // Placeholder para la imagen del álbum
-            Text(
-                text = "🎵",
-                fontSize = 32.sp,
-                color = Color(0xFFB4B1B8)
-            )
-        }
+        VinylWithCover(
+            albumArt = playlist.cover,
+            isSpinning = false
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
