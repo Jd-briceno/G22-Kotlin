@@ -49,19 +49,16 @@ fun LibraryScreen(
     var selectedTrack by remember { mutableStateOf<Track?>(null) }
     var showModal by remember { mutableStateOf(false) }
     
-    // 🎵 Canciones reales de Spotify
     var starlightSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
     var djNovaSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
     var eternalHitsSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
     var orbitCrewSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
     var playlistsLoading by remember { mutableStateOf(true) }
 
-    // Cargar canciones al iniciar
     LaunchedEffect(Unit) {
         try {
             playlistsLoading = true
             
-            // Cargar canciones en paralelo
             val starlightDeferred = async { spotifyService.searchTracks("lofi music") }
             val djNovaDeferred = async { spotifyService.searchTracks("electronic dance music") }
             val eternalHitsDeferred = async { spotifyService.searchTracks("rock music") }
@@ -72,15 +69,7 @@ fun LibraryScreen(
             eternalHitsSongs = eternalHitsDeferred.await()
             orbitCrewSongs = orbitCrewDeferred.await()
             
-            println("📊 Songs loaded:")
-            println("  - Starlight: ${starlightSongs.size}")
-            println("  - DJ Nova: ${djNovaSongs.size}")
-            println("  - Eternal Hits: ${eternalHitsSongs.size}")
-            println("  - Orbit Crew: ${orbitCrewSongs.size}")
-            
         } catch (e: Exception) {
-            println("Error cargando canciones: ${e.message}")
-            // Fallback a canciones locales si falla la API
             starlightSongs = listOf(
                 Track("Lofi Study", "Chill Beats", "3:45", 225000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123"),
                 Track("Peaceful Morning", "Ambient Sounds", "4:12", 252000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef124"),
@@ -104,13 +93,11 @@ fun LibraryScreen(
         }
     }
 
-    // Función para buscar canciones
     fun searchSongs(query: String) {
         if (query.isEmpty()) return
 
         loading = true
         searchQuery = query
-        println("🎵 Starting search for: '$query'")
 
         CoroutineScope(Dispatchers.Main).launch {
             try {
@@ -118,13 +105,8 @@ fun LibraryScreen(
                     spotifyService.searchTracks(query)
                 }
                 songs = results
-                println("🎵 Search completed: ${songs.size} songs found")
-                songs.forEach { song ->
-                    println("🎵 Found song: ${song.title} by ${song.artist}")
-                }
             } catch (e: Exception) {
-                println("❌ Search error: ${e.message}")
-                e.printStackTrace()
+                // Handle error silently
             } finally {
                 loading = false
             }
@@ -142,7 +124,6 @@ fun LibraryScreen(
             Spacer(modifier = Modifier.height(40.dp))
         }
 
-        // Navbar (usando el mismo de HomeScreen)
         item {
             OrbitNavbar(
                 username = "Jay Walker",
@@ -157,7 +138,6 @@ fun LibraryScreen(
             Spacer(modifier = Modifier.height(2.dp))
         }
 
-        // Search Bar
         item {
             SearchBarComposable(
                 onSearch = { query -> searchSongs(query) }
@@ -168,7 +148,6 @@ fun LibraryScreen(
             Spacer(modifier = Modifier.height(5.dp))
         }
 
-        // Loading indicator
         if (loading) {
             item {
                 Box(
@@ -184,38 +163,24 @@ fun LibraryScreen(
             }
         }
 
-        // Songs results
-        println("🎵 Songs count: ${songs.size}")
         if (songs.isNotEmpty()) {
             item {
                 LazyRow(
                     modifier = Modifier.height(180.dp)
                 ) {
                     items(songs) { song ->
-                        println("🎵 Rendering song: ${song.title}")
                         SongResultCard(
                             song = song,
                             onClick = {
-                                println("🎵 Clicked on song: ${song.title}")
                                 selectedTrack = song
                                 showModal = true
-                                println("🎵 Modal should show: $showModal")
                             }
                         )
                     }
                 }
             }
-        } else {
-            item {
-                Text(
-                    text = "No songs found",
-                    color = Color.White,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
         }
 
-        // Library Header
         item {
             Text(
                 text = "Library",
@@ -227,8 +192,6 @@ fun LibraryScreen(
                     .padding(vertical = 16.dp)
             )
         }
-
-        // Playlist Sections con datos reales de Spotify
         if (playlistsLoading) {
             item {
                 Box(
@@ -293,13 +256,10 @@ fun LibraryScreen(
         }
     }
 
-    // Modal para mostrar detalles de la canción
     if (showModal && selectedTrack != null) {
-        println("🎵 Rendering modal for: ${selectedTrack!!.title}")
         SongDetailModal(
             track = selectedTrack!!,
             onDismiss = { 
-                println("🎵 Modal dismissed")
                 showModal = false
                 selectedTrack = null
             }
@@ -307,7 +267,6 @@ fun LibraryScreen(
     }
 }
 
-// Modal para mostrar detalles de la canción
 @Composable
 fun SongDetailModal(
     track: Track,
@@ -320,7 +279,6 @@ fun SongDetailModal(
             .clickable { onDismiss() },
         contentAlignment = Alignment.Center
     ) {
-        // Modal content
         Box(
             modifier = Modifier
                 .width(320.dp)
@@ -340,7 +298,6 @@ fun SongDetailModal(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // VinylWithCover component
                 VinylWithCover(
                     albumArt = track.albumArt,
                     modifier = Modifier.size(200.dp)
@@ -348,7 +305,6 @@ fun SongDetailModal(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Song title
                 Text(
                     text = track.title,
                     color = Color(0xFFE9E8EE),
@@ -359,7 +315,6 @@ fun SongDetailModal(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Artist name
                 Text(
                     text = track.artist,
                     color = Color(0xFFE9E8EE),
@@ -369,7 +324,6 @@ fun SongDetailModal(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Context info
                 Text(
                     text = "KPop Demon Hunters (Soundtrack from Netflix Film)",
                     color = Color(0xFFB4B1B8),
@@ -379,7 +333,6 @@ fun SongDetailModal(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Duration
                 Text(
                     text = track.duration,
                     color = Color(0xFFB4B1B8),
@@ -388,12 +341,10 @@ fun SongDetailModal(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Action buttons
                 Row(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Play button
                     IconButton(
                         onClick = { /* Play action */ },
                         modifier = Modifier
@@ -412,7 +363,6 @@ fun SongDetailModal(
                         )
                     }
 
-                    // Add to playlist button
                     IconButton(
                         onClick = { /* Add to playlist action */ },
                         modifier = Modifier
@@ -431,7 +381,6 @@ fun SongDetailModal(
                         )
                     }
 
-                    // Like button
                     IconButton(
                         onClick = { /* Like action */ },
                         modifier = Modifier
@@ -450,7 +399,6 @@ fun SongDetailModal(
                         )
                     }
 
-                    // Share button
                     IconButton(
                         onClick = { /* Share action */ },
                         modifier = Modifier
@@ -474,7 +422,6 @@ fun SongDetailModal(
     }
 }
 
-// Composable para Navbar (diseño de la primera imagen)
 @Composable
 fun NavbarComposable(
     username: String,
@@ -489,7 +436,6 @@ fun NavbarComposable(
             .height(120.dp)
             .background(Color(0xFF010B19))
     ) {
-        // Barra de título superior con "Ninja"
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -505,7 +451,6 @@ fun NavbarComposable(
             )
 
             Row {
-                // Círculos decorativos
                 Box(
                     modifier = Modifier
                         .size(8.dp)
@@ -526,7 +471,6 @@ fun NavbarComposable(
             }
         }
 
-        // Título principal "Star Archive"
         Text(
             text = "Star Archive",
             color = Color(0xFFE9E8EE),
@@ -537,7 +481,6 @@ fun NavbarComposable(
                 .padding(top = 20.dp)
         )
 
-        // Botones de navegación
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -546,7 +489,6 @@ fun NavbarComposable(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Botón Home
             IconButton(
                 onClick = onNavigateToHome,
                 modifier = Modifier
@@ -564,9 +506,7 @@ fun NavbarComposable(
                 )
             }
 
-            // Botones de la derecha
             Row {
-                // Botón Notificaciones
                 IconButton(
                     onClick = { /* Notifications */ },
                     modifier = Modifier
@@ -586,7 +526,6 @@ fun NavbarComposable(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Avatar del perfil
                 IconButton(
                     onClick = onProfileClick,
                     modifier = Modifier
@@ -608,7 +547,6 @@ fun NavbarComposable(
     }
 }
 
-// Composable para Search Bar (igual que en Flutter)
 @Composable
 fun SearchBarComposable(
     onSearch: (String) -> Unit
@@ -620,7 +558,6 @@ fun SearchBarComposable(
             .fillMaxWidth()
             .height(90.dp)
     ) {
-        // Fondo de la barra de búsqueda (rectángulo redondeado)
         Box(
             modifier = Modifier
                 .offset(y = 15.dp)
@@ -637,7 +574,6 @@ fun SearchBarComposable(
                 )
         )
 
-        // Campo de texto
         OutlinedTextField(
             value = query,
             onValueChange = {
@@ -672,13 +608,11 @@ fun SearchBarComposable(
             )
         )
 
-        // Círculos concéntricos (como en Flutter)
         Box(
             modifier = Modifier
-                .offset(x = 16.dp, y = 0.dp) // Ajustado para alinear con el input
+                .offset(x = 16.dp, y = 0.dp)
                 .align(Alignment.CenterEnd)
         ) {
-            // Círculo exterior
             Box(
                 modifier = Modifier
                     .size(80.dp)
@@ -686,7 +620,6 @@ fun SearchBarComposable(
                     .border(1.dp, Color(0xFFE9E8EE), CircleShape)
             )
 
-            // Círculo medio
             Box(
                 modifier = Modifier
                     .size(68.dp)
@@ -695,7 +628,6 @@ fun SearchBarComposable(
                     .align(Alignment.Center)
             )
 
-            // Círculo interior
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -704,7 +636,6 @@ fun SearchBarComposable(
                     .align(Alignment.Center)
             )
 
-            // Círculo central
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -712,7 +643,6 @@ fun SearchBarComposable(
                     .align(Alignment.Center)
             )
 
-            // Icono de lupa
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Search",
@@ -725,21 +655,16 @@ fun SearchBarComposable(
     }
 }
 
-// Composable para Song Result Card (igual que en Flutter)
 @Composable
 fun SongResultCard(
     song: Track,
     onClick: () -> Unit = {}
 ) {
-    println("🎵 SongResultCard rendering: ${song.title}")
     Column(
         modifier = Modifier
             .width(165.dp)
             .padding(8.dp)
-            .clickable { 
-                println("🎵 SongResultCard clicked: ${song.title}")
-                onClick() 
-            },
+            .clickable { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         VinylWithCover(
@@ -761,7 +686,6 @@ fun SongResultCard(
     }
 }
 
-// Composable para Playlist Section
 @Composable
 fun SongSection(
     title: String,
@@ -790,7 +714,6 @@ fun SongSection(
     }
 }
 
-// Composable para Playlist Card (igual que en Flutter)
 @Composable
 fun PlaylistCard(playlist: Playlist) {
     Column(
