@@ -130,7 +130,8 @@ fun LibraryScreen(
                 title = "Ninja",
                 subtitle = "Star Archive",
                 profilePainter = null,
-                onNavigateToHome = onNavigateToHome
+                onNavigateToHome = onNavigateToHome,
+                onNavigateToProfile = onNavigateToProfile
             )
         }
 
