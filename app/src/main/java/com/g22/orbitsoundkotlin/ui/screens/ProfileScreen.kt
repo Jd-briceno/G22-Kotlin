@@ -258,20 +258,18 @@ fun DottedLine() {
             .width(320.dp)
             .height(2.dp)
     ) {
-        val paint = Paint().apply {
-            color = Color(0xFFB4B1B8)
-            strokeWidth = 2f
-        }
-        
+        val color = Color(0xFFB4B1B8)
+        val strokeWidth = 2f
         val dashWidth = 6f
         val dashSpace = 4f
         var startX = 0f
         
         while (startX < size.width) {
             drawLine(
+                color = color,
                 start = Offset(startX, 0f),
                 end = Offset(startX + dashWidth, 0f),
-                paint = paint
+                strokeWidth = strokeWidth
             )
             startX += dashWidth + dashSpace
         }
