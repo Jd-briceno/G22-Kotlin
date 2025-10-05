@@ -1,5 +1,6 @@
 package com.g22.orbitsoundkotlin.ui.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -11,7 +12,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -20,10 +23,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.g22.orbitsoundkotlin.R
 
-/**
- * VinylWithCover - Componente que muestra una funda de vinilo con el vinilo sobresaliendo
- * Basado en el componente Flutter del mismo nombre
- */
+
 @Composable
 fun VinylWithCover(
     albumArt: String,
@@ -47,33 +47,41 @@ fun VinylWithCover(
             Canvas(
                 modifier = Modifier.fillMaxSize()
             ) {
-                val center = Offset(size.width / 2, size.height / 2)
+                val center = this.center // Use the center from the DrawScope
                 val radius = size.width / 2
-                
+
+                // --- START: MODIFIED SECTION ---
+
                 // Surcos concéntricos
-                val groovePaint = androidx.compose.ui.graphics.Paint().apply {
-                    color = Color(0xFFB4B1B8).copy(alpha = 0.35f)
-                    style = androidx.compose.ui.graphics.PaintingStyle.Stroke
-                    strokeWidth = 0.6f
-                }
-                
+                val grooveColor = Color(0xFFB4B1B8).copy(alpha = 0.35f)
                 val inner = radius * 0.36f
-                for (r in inner..(radius * 0.96f) step 1.6f) {
-                    drawCircle(center, r, groovePaint)
+                var rGroove = inner
+                while (rGroove <= radius * 0.96f) {
+                    drawCircle(
+                        color = grooveColor,
+                        radius = rGroove,
+                        center = center,
+                        style = Stroke(width = 0.6f) // Pass Stroke style directly
+                    )
+                    rGroove += 1.6f
                 }
-                
+
                 // Aros más marcados
-                val boldPaint = androidx.compose.ui.graphics.Paint().apply {
-                    color = Color(0xFFE9E8EE).copy(alpha = 0.5f)
-                    style = androidx.compose.ui.graphics.PaintingStyle.Stroke
-                    strokeWidth = 1.0f
+                val boldGrooveColor = Color(0xFFE9E8EE).copy(alpha = 0.5f)
+                var rBold = inner + 8f
+                while (rBold <= radius * 0.96f) {
+                    drawCircle(
+                        color = boldGrooveColor,
+                        radius = rBold,
+                        center = center,
+                        style = Stroke(width = 1.0f) // Pass Stroke style directly
+                    )
+                    rBold += 8f
                 }
-                
-                for (r in (inner + 8)..(radius * 0.96f) step 8f) {
-                    drawCircle(center, r, boldPaint)
-                }
+
+                // --- END: MODIFIED SECTION ---
             }
-            
+
             // Etiqueta del centro
             Box(
                 modifier = Modifier

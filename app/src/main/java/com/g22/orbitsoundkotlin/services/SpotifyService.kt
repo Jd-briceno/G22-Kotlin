@@ -1,6 +1,7 @@
 package com.g22.orbitsoundkotlin.services
 
 import android.util.Base64
+import com.g22.orbitsoundkotlin.BuildConfig
 import com.g22.orbitsoundkotlin.models.Track
 import com.g22.orbitsoundkotlin.models.Playlist
 import com.google.gson.Gson
