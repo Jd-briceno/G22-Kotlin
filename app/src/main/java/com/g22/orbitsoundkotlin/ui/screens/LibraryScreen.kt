@@ -98,7 +98,7 @@ fun LibraryScreen(
             OrbitNavbar(
                 username = "Jay Walker",
                 title = "Ninja",
-                subtitle = "Vinyl Library",
+                subtitle = "Star Archive",
                 profilePainter = null
             )
         }
@@ -377,28 +377,13 @@ fun SearchBarComposable(
 ) {
     var query by remember { mutableStateOf("") }
 
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(50.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Fondo de la barra de búsqueda
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-                .background(
-                    Color(0xFF010B19),
-                    RoundedCornerShape(25.dp)
-                )
-                .border(
-                    1.dp,
-                    Color(0xFFB4B1B8),
-                    RoundedCornerShape(25.dp)
-                )
-        )
-
-        // Campo de texto
+        // Campo de texto (sin el icono superpuesto)
         OutlinedTextField(
             value = query,
             onValueChange = {
@@ -414,17 +399,17 @@ fun SearchBarComposable(
                 )
             },
             modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-                .padding(horizontal = 16.dp),
+                .weight(1f)
+                .height(50.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
+                focusedBorderColor = Color(0xFFB4B1B8),
+                unfocusedBorderColor = Color(0xFFB4B1B8),
                 focusedTextColor = Color(0xFFE9E8EE),
                 unfocusedTextColor = Color(0xFFE9E8EE),
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent
+                focusedContainerColor = Color(0xFF010B19),
+                unfocusedContainerColor = Color(0xFF010B19)
             ),
+            shape = RoundedCornerShape(25.dp),
             textStyle = androidx.compose.ui.text.TextStyle(
                 fontSize = 15.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
@@ -432,54 +417,23 @@ fun SearchBarComposable(
             )
         )
 
-        // Icono de búsqueda con círculos concéntricos
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Icono de búsqueda separado (como en la primera imagen)
         Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 16.dp)
+                .size(50.dp)
+                .background(
+                    Color(0xFFB4B1B8),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            // Círculos concéntricos
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(
-                        Color(0xFF010B19),
-                        CircleShape
-                    )
-                    .border(1.dp, Color(0xFFE9E8EE), CircleShape)
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(68.dp)
-                    .background(Color.Transparent, CircleShape)
-                    .border(1.dp, Color(0xFFB4B1B8), CircleShape)
-                    .align(Alignment.Center)
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(Color.Transparent, CircleShape)
-                    .border(1.dp, Color(0xFFB4B1B8), CircleShape)
-                    .align(Alignment.Center)
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(Color(0xFFB4B1B8), CircleShape)
-                    .align(Alignment.Center)
-            )
-
-            // Icono de lupa
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Search",
                 tint = Color(0xFF010B19),
-                modifier = Modifier
-                    .size(20.dp)
-                    .align(Alignment.Center)
+                modifier = Modifier.size(20.dp)
             )
         }
     }
