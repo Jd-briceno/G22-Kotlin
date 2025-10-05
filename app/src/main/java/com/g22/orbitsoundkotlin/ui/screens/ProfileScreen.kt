@@ -46,7 +46,7 @@ fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Color(0xFF010B19))
             .verticalScroll(rememberScrollState())
             .padding(bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -56,8 +56,8 @@ fun ProfileScreen(
         // Navbar
         OrbitNavbar(
             username = "Jay Walker",
-            title = "Lightning Ninja",
-            subtitle = "Command Profile",
+            title = "Ninja",
+            subtitle = "Profile",
             profilePainter = null,
             onNavigateToHome = onNavigateToHome
         )
