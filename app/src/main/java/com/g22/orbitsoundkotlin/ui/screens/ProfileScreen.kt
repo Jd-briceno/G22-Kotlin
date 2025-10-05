@@ -48,7 +48,7 @@ fun ProfileScreen(
             .fillMaxSize()
             .background(Color(0xFF010B19))
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, top = 0.dp, bottom = 20.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(40.dp))
