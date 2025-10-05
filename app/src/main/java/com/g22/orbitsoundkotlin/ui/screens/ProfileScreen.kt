@@ -1,5 +1,6 @@
 package com.g22.orbitsoundkotlin.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -14,10 +15,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.g22.orbitsoundkotlin.models.Track
@@ -253,7 +258,7 @@ fun DottedLine() {
             .width(320.dp)
             .height(2.dp)
     ) {
-        val paint = androidx.compose.ui.graphics.Paint().apply {
+        val paint = Paint().apply {
             color = Color(0xFFB4B1B8)
             strokeWidth = 2f
         }
@@ -264,8 +269,8 @@ fun DottedLine() {
         
         while (startX < size.width) {
             drawLine(
-                start = androidx.compose.ui.geometry.Offset(startX, 0f),
-                end = androidx.compose.ui.geometry.Offset(startX + dashWidth, 0f),
+                start = Offset(startX, 0f),
+                end = Offset(startX + dashWidth, 0f),
                 paint = paint
             )
             startX += dashWidth + dashSpace
