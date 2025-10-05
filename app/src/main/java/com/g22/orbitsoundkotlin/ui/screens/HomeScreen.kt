@@ -174,7 +174,8 @@ private fun RememberLocationPermissionRequester(onGranted: () -> Unit) {
 fun HomeScreen(    modifier: Modifier = Modifier,
                    user: AuthUser,
                    onNavigateToStellarEmotions: () -> Unit,
-                   onNavigateToLibrary: () -> Unit = {}
+                   onNavigateToLibrary: () -> Unit = {},
+                   onNavigateToProfile: () -> Unit = {}
 ) {
     val vm = remember { HomeViewModel() }
     val context = LocalContext.current
@@ -250,7 +251,9 @@ fun HomeScreen(    modifier: Modifier = Modifier,
                 username = user.email?.split("@")?.firstOrNull() ?: "Explorer",
                 title = "Ninja",
                 subtitle = null,
-                profilePainter = null
+                profilePainter = null,
+                onNavigateToHome = {},
+                onNavigateToProfile = onNavigateToProfile
             )
 
 
@@ -312,7 +315,8 @@ fun OrbitNavbar(
     title: String,
     subtitle: String? = null,
     profilePainter: Painter? = null,
-    onNavigateToHome: () -> Unit = {}
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val dark = Color(0xFF010B19)
     val borderColor = Color(0xFFB4B1B8)
@@ -421,7 +425,9 @@ fun OrbitNavbar(
                 .offset(x = 300.dp, y = 42.dp)
                 .size(45.dp)
                 .clip(buttonShape)
-                .border(BorderStroke(2.dp, borderColor), buttonShape),
+                .background(dark)
+                .border(BorderStroke(2.dp, borderColor), buttonShape)
+                .clickable { onNavigateToProfile() },
             contentAlignment = Alignment.Center
         ) {
             if (profilePainter != null) {

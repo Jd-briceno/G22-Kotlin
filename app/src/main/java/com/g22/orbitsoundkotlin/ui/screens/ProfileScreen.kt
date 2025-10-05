@@ -22,7 +22,7 @@ import com.g22.orbitsoundkotlin.ui.components.*
 
 @Composable
 fun ProfileScreen(
-    onNavigateToLibrary: () -> Unit = {}
+    onNavigateToHome: () -> Unit = {}
 ) {
     val userProfile = remember {
         UserProfile(
@@ -68,13 +68,13 @@ fun ProfileScreen(
     ) {
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Navbar con icono de configuración
-        NavbarComposable(
+        // Navbar usando el mismo de HomeScreen
+        OrbitNavbar(
             username = "Jay Walker",
-            title = "Lightning Ninja",
-            subtitle = null,
-            showSettingsIcon = true,
-            onHomeClick = onNavigateToLibrary
+            title = "Ninja",
+            subtitle = "Profile",
+            profilePainter = null,
+            onNavigateToHome = onNavigateToHome
         )
 
         Spacer(modifier = Modifier.height(0.dp))
@@ -147,155 +147,3 @@ fun ProfileScreen(
     }
 }
 
-// Navbar específico para Profile con icono de configuración
-@Composable
-fun NavbarComposable(
-    username: String,
-    title: String,
-    subtitle: String?,
-    showSettingsIcon: Boolean = false,
-    onHomeClick: () -> Unit = {}
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp)
-            .background(Color(0xFF010B19))
-    ) {
-        // Barra de título superior con "Ninja"
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Campo "Ninja" como en la imagen
-            Box(
-                modifier = Modifier
-                    .width(80.dp)
-                    .height(24.dp)
-                    .background(
-                        Color(0xFF2C2C2C),
-                        RoundedCornerShape(4.dp)
-                    )
-                    .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(4.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Ninja",
-                    color = Color(0xFFB4B1B8),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Row {
-                // Círculos decorativos
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(Color(0xFFB4B1B8), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(Color(0xFFB4B1B8), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "o_x",
-                    color = Color(0xFFB4B1B8),
-                    fontSize = 12.sp
-                )
-            }
-        }
-
-        // Barra principal con navegación
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .align(Alignment.BottomCenter),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Botón Home + "Profile"
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Botón Home
-                IconButton(
-                    onClick = onHomeClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            Color(0xFF2C2C2C),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Home,
-                        contentDescription = "Home",
-                        tint = Color(0xFFE9E8EE),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                // Texto "Profile"
-                Text(
-                    text = "Profile",
-                    color = Color(0xFFE9E8EE),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            // Botones de la derecha
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Botón Notificaciones
-                IconButton(
-                    onClick = { /* Notifications */ },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            Color(0xFF2C2C2C),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "Notifications",
-                        tint = Color(0xFFE9E8EE),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                // Botón Configuración
-                IconButton(
-                    onClick = { /* Settings */ },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            Color(0xFF2C2C2C),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = Color(0xFFE9E8EE),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        }
-    }
-}
