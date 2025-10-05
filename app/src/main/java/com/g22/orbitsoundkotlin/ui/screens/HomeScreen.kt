@@ -172,7 +172,8 @@ private fun RememberLocationPermissionRequester(onGranted: () -> Unit) {
 @Composable
 fun HomeScreen(    modifier: Modifier = Modifier,
                    user: AuthUser,
-                   onNavigateToStellarEmotions: () -> Unit
+                   onNavigateToStellarEmotions: () -> Unit,
+                   onNavigateToLibrary: () -> Unit = {}
 ) {
     val vm = remember { HomeViewModel() }
     val context = LocalContext.current
@@ -290,6 +291,8 @@ fun HomeScreen(    modifier: Modifier = Modifier,
                 onShortcutClick = { shortcut ->
                     if (shortcut.label == "Stellar Emotions") {
                         onNavigateToStellarEmotions()
+                    } else if (shortcut.label == "Star Archive") {
+                        onNavigateToLibrary()
                     }
                 }
             )

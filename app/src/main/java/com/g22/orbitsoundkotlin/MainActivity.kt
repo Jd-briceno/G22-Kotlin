@@ -37,6 +37,7 @@ import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
 import com.g22.orbitsoundkotlin.data.userPreferencesStore
 import com.g22.orbitsoundkotlin.ui.screens.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
+import com.g22.orbitsoundkotlin.ui.screens.LibraryScreen
 import com.g22.orbitsoundkotlin.ui.screens.LoginScreen
 import com.g22.orbitsoundkotlin.ui.screens.SignupScreen
 import com.g22.orbitsoundkotlin.ui.screens.StellarEmotionsScreen
@@ -342,6 +343,9 @@ private fun OrbitSoundApp() {
                         user = current.user,
                         onNavigateToStellarEmotions = {
                             destination = AppDestination.StellarEmotions(current.user)
+                        },
+                        onNavigateToLibrary = {
+                            destination = AppDestination.Library(current.user)
                         }
                     )
                     // Testing purposes:
@@ -350,6 +354,13 @@ private fun OrbitSoundApp() {
             }
             is AppDestination.StellarEmotions -> {
                 StellarEmotionsScreen(username = current.user.email ?: "User")
+            }
+            is AppDestination.Library -> {
+                LibraryScreen(
+                    onNavigateToProfile = {
+                        // TODO: Implementar navegación al perfil si es necesario
+                    }
+                )
             }
         }
     }
@@ -361,4 +372,5 @@ private sealed interface AppDestination {
     data class Interests(val user: AuthUser) : AppDestination
     data class Home(val user: AuthUser) : AppDestination
     data class StellarEmotions(val user: AuthUser) : AppDestination
+    data class Library(val user: AuthUser) : AppDestination
 }
