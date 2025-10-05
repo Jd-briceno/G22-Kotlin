@@ -49,55 +49,55 @@ fun LibraryScreen(
     var selectedTrack by remember { mutableStateOf<Track?>(null) }
     var showModal by remember { mutableStateOf(false) }
     
-    // 🎵 Playlists reales de Spotify
-    var starlightPlaylists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
-    var djNovaPlaylists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
-    var eternalHitsPlaylists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
-    var orbitCrewPlaylists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
+    // 🎵 Canciones reales de Spotify
+    var starlightSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
+    var djNovaSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
+    var eternalHitsSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
+    var orbitCrewSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
     var playlistsLoading by remember { mutableStateOf(true) }
 
-    // Cargar playlists al iniciar
+    // Cargar canciones al iniciar
     LaunchedEffect(Unit) {
         try {
             playlistsLoading = true
             
-            // Cargar playlists en paralelo
-            val starlightDeferred = async { spotifyService.getGenrePlaylists("lofi") }
-            val djNovaDeferred = async { spotifyService.getFeaturedPlaylists() }
-            val eternalHitsDeferred = async { spotifyService.getGenrePlaylists("rock") }
-            val orbitCrewDeferred = async { spotifyService.getCategoryPlaylists("pop") }
+            // Cargar canciones en paralelo
+            val starlightDeferred = async { spotifyService.searchTracks("lofi music") }
+            val djNovaDeferred = async { spotifyService.searchTracks("electronic dance music") }
+            val eternalHitsDeferred = async { spotifyService.searchTracks("rock music") }
+            val orbitCrewDeferred = async { spotifyService.searchTracks("pop hits") }
             
-            starlightPlaylists = starlightDeferred.await()
-            djNovaPlaylists = djNovaDeferred.await()
-            eternalHitsPlaylists = eternalHitsDeferred.await()
-            orbitCrewPlaylists = orbitCrewDeferred.await()
+            starlightSongs = starlightDeferred.await()
+            djNovaSongs = djNovaDeferred.await()
+            eternalHitsSongs = eternalHitsDeferred.await()
+            orbitCrewSongs = orbitCrewDeferred.await()
             
-            println("📊 Playlists loaded:")
-            println("  - Starlight: ${starlightPlaylists.size}")
-            println("  - DJ Nova: ${djNovaPlaylists.size}")
-            println("  - Eternal Hits: ${eternalHitsPlaylists.size}")
-            println("  - Orbit Crew: ${orbitCrewPlaylists.size}")
+            println("📊 Songs loaded:")
+            println("  - Starlight: ${starlightSongs.size}")
+            println("  - DJ Nova: ${djNovaSongs.size}")
+            println("  - Eternal Hits: ${eternalHitsSongs.size}")
+            println("  - Orbit Crew: ${orbitCrewSongs.size}")
             
         } catch (e: Exception) {
-            println("Error cargando playlists: ${e.message}")
-            // Fallback a playlists locales si falla la API
-            starlightPlaylists = listOf(
-                Playlist("Roll a d20", "assets/images/Dungeons.jpg"),
-                Playlist("Good Vibes", "assets/images/Good.jpg"),
-                Playlist("Jazz Nights", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123")
+            println("Error cargando canciones: ${e.message}")
+            // Fallback a canciones locales si falla la API
+            starlightSongs = listOf(
+                Track("Lofi Study", "Chill Beats", "3:45", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123"),
+                Track("Peaceful Morning", "Ambient Sounds", "4:12", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef124"),
+                Track("Coffee Shop Vibes", "Relaxing Music", "3:30", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef125")
             )
-            djNovaPlaylists = listOf(
-                Playlist("Lofi", "assets/images/Lofi.jpg"),
-                Playlist("Study", "assets/images/Study.jpg"),
-                Playlist("Jazz Nights", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123")
+            djNovaSongs = listOf(
+                Track("Electronic Dreams", "DJ Nova", "4:20", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef126"),
+                Track("Dance Floor", "EDM Master", "3:55", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef127"),
+                Track("Neon Lights", "Synth Wave", "4:08", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef128")
             )
-            eternalHitsPlaylists = listOf(
-                Playlist("Hunting soul", "assets/images/Hunting.jpg"),
-                Playlist("Ruined King", "assets/images/Ruined.jpg")
+            eternalHitsSongs = listOf(
+                Track("Classic Rock Anthem", "Rock Legends", "5:15", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef129"),
+                Track("Timeless Melody", "Eternal Artists", "4:30", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef130")
             )
-            orbitCrewPlaylists = listOf(
-                Playlist("I Believe", "assets/images/UFO.jpg"),
-                Playlist("Indie Dreams", "assets/images/Indie.jpg")
+            orbitCrewSongs = listOf(
+                Track("Space Journey", "Orbit Crew", "6:45", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef131"),
+                Track("Indie Vibes", "Alternative Sound", "3:42", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef132")
             )
         } finally {
             playlistsLoading = false
@@ -244,30 +244,46 @@ fun LibraryScreen(
             }
         } else {
             item {
-                PlaylistSection(
+                SongSection(
                     title = "✨ Starlight Suggestions",
-                    playlists = starlightPlaylists
+                    songs = starlightSongs,
+                    onSongClick = { song ->
+                        selectedTrack = song
+                        showModal = true
+                    }
                 )
             }
 
             item {
-                PlaylistSection(
+                SongSection(
                     title = "🎧 DJ Nova's Set",
-                    playlists = djNovaPlaylists
+                    songs = djNovaSongs,
+                    onSongClick = { song ->
+                        selectedTrack = song
+                        showModal = true
+                    }
                 )
             }
 
             item {
-                PlaylistSection(
+                SongSection(
                     title = "💖 Eternal Hits",
-                    playlists = eternalHitsPlaylists
+                    songs = eternalHitsSongs,
+                    onSongClick = { song ->
+                        selectedTrack = song
+                        showModal = true
+                    }
                 )
             }
 
             item {
-                PlaylistSection(
+                SongSection(
                     title = "🎧 Orbit Crew Playlist",
-                    playlists = orbitCrewPlaylists
+                    songs = orbitCrewSongs,
+                    onSongClick = { song ->
+                        selectedTrack = song
+                        showModal = true
+                    }
                 )
             }
         }
@@ -747,9 +763,10 @@ fun SongResultCard(
 
 // Composable para Playlist Section
 @Composable
-fun PlaylistSection(
+fun SongSection(
     title: String,
-    playlists: List<Playlist>
+    songs: List<Track>,
+    onSongClick: (Track) -> Unit
 ) {
     Column {
         Text(
@@ -763,8 +780,11 @@ fun PlaylistSection(
         LazyRow(
             modifier = Modifier.height(180.dp)
         ) {
-            items(playlists) { playlist ->
-                PlaylistCard(playlist = playlist)
+            items(songs) { song ->
+                SongResultCard(
+                    song = song,
+                    onClick = { onSongClick(song) }
+                )
             }
         }
     }
