@@ -16,6 +16,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
@@ -172,7 +173,8 @@ private fun RememberLocationPermissionRequester(onGranted: () -> Unit) {
 @Composable
 fun HomeScreen(    modifier: Modifier = Modifier,
                    user: AuthUser,
-                   onNavigateToStellarEmotions: () -> Unit
+                   onNavigateToStellarEmotions: () -> Unit,
+                   onNavigateToLibrary: () -> Unit = {}
 ) {
     val vm = remember { HomeViewModel() }
     val context = LocalContext.current
@@ -290,6 +292,8 @@ fun HomeScreen(    modifier: Modifier = Modifier,
                 onShortcutClick = { shortcut ->
                     if (shortcut.label == "Stellar Emotions") {
                         onNavigateToStellarEmotions()
+                    } else if (shortcut.label == "Star Archive") {
+                        onNavigateToLibrary()
                     }
                 }
             )
@@ -303,11 +307,12 @@ fun HomeScreen(    modifier: Modifier = Modifier,
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun OrbitNavbar(
+fun OrbitNavbar(
     username: String,
     title: String,
     subtitle: String? = null,
-    profilePainter: Painter? = null
+    profilePainter: Painter? = null,
+    onNavigateToHome: () -> Unit = {}
 ) {
     val dark = Color(0xFF010B19)
     val borderColor = Color(0xFFB4B1B8)
@@ -384,7 +389,8 @@ private fun OrbitNavbar(
                 .size(45.dp)
                 .clip(buttonShape)
                 .background(dark)
-                .border(BorderStroke(2.dp, borderColor), buttonShape),
+                .border(BorderStroke(2.dp, borderColor), buttonShape)
+                .clickable { onNavigateToHome() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
