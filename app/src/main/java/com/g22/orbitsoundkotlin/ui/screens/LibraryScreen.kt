@@ -29,6 +29,7 @@ import com.g22.orbitsoundkotlin.models.Track
 import com.g22.orbitsoundkotlin.models.Playlist
 import com.g22.orbitsoundkotlin.services.SpotifyService
 import com.g22.orbitsoundkotlin.ui.components.VinylWithCover
+import com.g22.orbitsoundkotlin.ui.screens.OrbitNavbar
 import kotlinx.coroutines.*
 import kotlinx.coroutines.async
 
@@ -131,11 +132,11 @@ fun LibraryScreen(
 
         // Navbar (usando el mismo de HomeScreen)
         item {
-            NavbarComposable(
+            OrbitNavbar(
                 username = "Jay Walker",
                 title = "Ninja",
                 subtitle = "Star Archive",
-                onProfileClick = onNavigateToProfile,
+                profilePainter = null,
                 onNavigateToHome = onNavigateToHome
             )
         }
