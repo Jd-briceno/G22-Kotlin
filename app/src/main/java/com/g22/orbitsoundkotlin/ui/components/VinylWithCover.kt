@@ -16,6 +16,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.g22.orbitsoundkotlin.R
@@ -45,7 +47,7 @@ fun VinylWithCover(
                     .fillMaxSize()
                     .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop,
-                error = {
+                error = { errorState ->
                     // Placeholder si no se encuentra la imagen
                     Box(
                         modifier = Modifier
