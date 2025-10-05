@@ -310,7 +310,8 @@ fun OrbitNavbar(
     username: String,
     title: String,
     subtitle: String? = null,
-    profilePainter: Painter? = null
+    profilePainter: Painter? = null,
+    onNavigateToHome: () -> Unit = {}
 ) {
     val dark = Color(0xFF010B19)
     val borderColor = Color(0xFFB4B1B8)

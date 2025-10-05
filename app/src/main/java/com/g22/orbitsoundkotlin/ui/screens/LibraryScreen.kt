@@ -131,11 +131,12 @@ fun LibraryScreen(
 
         // Navbar (usando el mismo de HomeScreen)
         item {
-            OrbitNavbar(
+            NavbarComposable(
                 username = "Jay Walker",
                 title = "Ninja",
                 subtitle = "Star Archive",
-                profilePainter = null
+                onProfileClick = onNavigateToProfile,
+                onNavigateToHome = onNavigateToHome
             )
         }
 
@@ -252,7 +253,8 @@ fun NavbarComposable(
     username: String,
     title: String,
     subtitle: String,
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
