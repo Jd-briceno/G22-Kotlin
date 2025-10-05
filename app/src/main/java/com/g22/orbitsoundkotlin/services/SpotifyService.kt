@@ -211,28 +211,20 @@ class SpotifyService {
                     val trackObj = item.asJsonObject
                     if (trackObj.get("id") != null) {
                         println("🔍 Raw track data: ${trackObj}")
-                        try {
-                            val track = Track.fromSpotify(trackObj.asMap())
-                            println("🎵 Track: ${track.title} by ${track.artist} - Image: ${track.albumArt}")
-                            tracks.add(track)
-                        } catch (e: Exception) {
-                            println("❌ Error parsing track: ${e.message}")
-                            e.printStackTrace()
-                            // Crear track manualmente si falla el parsing
-                            val title = trackObj.get("name")?.asString ?: "Unknown"
-                            val artists = trackObj.getAsJsonArray("artists")?.map { it.asJsonObject.get("name")?.asString ?: "" }?.joinToString(", ") ?: "Unknown"
-                            val durationMs = trackObj.get("duration_ms")?.asInt ?: 0
-                            val minutes = durationMs / 60000
-                            val seconds = (durationMs % 60000) / 1000
-                            val duration = String.format("%d:%02d", minutes, seconds)
-                            val album = trackObj.getAsJsonObject("album")
-                            val images = album?.getAsJsonArray("images")
-                            val albumArt = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
-                            
-                            val track = Track(title, artists, duration, durationMs, albumArt)
-                            println("🎵 Track (manual): ${track.title} by ${track.artist} - Image: ${track.albumArt}")
-                            tracks.add(track)
-                        }
+                        // Parsear directamente con JsonObject
+                        val title = trackObj.get("name")?.asString ?: "Unknown"
+                        val artists = trackObj.getAsJsonArray("artists")?.map { it.asJsonObject.get("name")?.asString ?: "" }?.joinToString(", ") ?: "Unknown"
+                        val durationMs = trackObj.get("duration_ms")?.asInt ?: 0
+                        val minutes = durationMs / 60000
+                        val seconds = (durationMs % 60000) / 1000
+                        val duration = String.format("%d:%02d", minutes, seconds)
+                        val album = trackObj.getAsJsonObject("album")
+                        val images = album?.getAsJsonArray("images")
+                        val albumArt = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+
+                        val track = Track(title, artists, duration, durationMs, albumArt)
+                        println("🎵 Track: ${track.title} by ${track.artist} - Image: ${track.albumArt}")
+                        tracks.add(track)
                     }
                 }
                 println("✅ Returning ${tracks.size} tracks")
