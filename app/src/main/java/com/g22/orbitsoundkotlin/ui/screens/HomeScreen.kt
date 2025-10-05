@@ -297,6 +297,8 @@ fun HomeScreen(    modifier: Modifier = Modifier,
                         onNavigateToStellarEmotions()
                     } else if (shortcut.label == "Star Archive") {
                         onNavigateToLibrary()
+                    } else if (shortcut.label == "Command profile") {
+                        onNavigateToProfile()
                     }
                 }
             )

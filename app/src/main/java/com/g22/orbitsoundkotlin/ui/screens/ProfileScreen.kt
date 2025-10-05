@@ -28,11 +28,11 @@ fun ProfileScreen(
 ) {
     val currentTrack = remember {
         Track(
-            title = "JEOPARDY",
-            artist = "Sawano Hiroyuki",
+            title = "Vengeance",
+            artist = "Coldrain",
             duration = "3:45",
             durationMs = 225000,
-            albumArt = "https://example.com/anime-album.jpg"
+            albumArt = "assets/images/Coldrain.jpg"
         )
     }
 
@@ -41,74 +41,99 @@ fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF010B19))
+            .background(Color.Black)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
+            .padding(bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Navbar
         OrbitNavbar(
             username = "Jay Walker",
-            title = "Ninja",
-            subtitle = "Profile",
+            title = "Lightning Ninja",
+            subtitle = "Command Profile",
             profilePainter = null,
             onNavigateToHome = onNavigateToHome
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(0.dp))
 
-        // Main Profile Card
-        ProfileCard()
+        // Backstage Card
+        BackstageCard()
 
-        Spacer(modifier = Modifier.height(20.dp))
+        // Línea punteada
+        DottedLine()
 
-        // Achievements Section
-        SectionWithTitle("Achievements") {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                AchievementBadge(icon = "💀", color = Color(0xFF9C27B0))
-                AchievementBadge(icon = "🔥", color = Color(0xFFFF5722))
-                AchievementBadge(icon = "👽", color = Color(0xFF4CAF50))
-                PlusBadge()
+        // Contenedor principal con secciones
+        Box(
+            modifier = Modifier
+                .width(320.dp)
+                .height(390.dp)
+                .background(
+                    Color(0xFF010B19),
+                    RoundedCornerShape(10.dp)
+                )
+                .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(10.dp))
+                .padding(14.dp)
+        ) {
+            Column {
+                // Sección Achievements
+                SectionTitle(title = "Achievements")
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AchievementCircle(image = "assets/images/medal.jpg")
+                    AchievementCircle(image = "assets/images/medal2.jpg")
+                    AchievementCircle(image = "assets/images/medal3.jpg")
+                    PlusIcon()
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Sección Friends
+                SectionTitle(title = "Friends")
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FriendCircle(image = "assets/images/X.jpg", status = FriendStatus.ONLINE)
+                    FriendCircle(image = "assets/images/Lin ling.jpg", status = FriendStatus.AWAY)
+                    FriendCircle(image = "assets/images/E-soul.jpg", status = FriendStatus.OFFLINE)
+                    PlusIcon()
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Sección Now Listening
+                SectionTitle(title = "Now Listening")
+                Spacer(modifier = Modifier.height(14.dp))
+
+                MiniSongReproductor(
+                    track = currentTrack,
+                    isPlaying = isPlaying,
+                    onPlayPause = { isPlaying = !isPlaying },
+                    onNext = { /* Lógica para siguiente canción */ },
+                    onPrevious = { /* Lógica para canción anterior */ }
+                )
             }
         }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Friends Section
-        SectionWithTitle("Friends") {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                FriendAvatar(name = "Green Ninja", color = Color(0xFF4CAF50))
-                FriendAvatar(name = "Snow Warrior", color = Color(0xFFF44336))
-                FriendAvatar(name = "Dark Knight", color = Color(0xFF2196F3))
-                PlusBadge()
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Now Listening Section
-        SectionWithTitle("Now listening") {
-            MusicPlayerCard(track = currentTrack, isPlaying = isPlaying, onPlayPause = { isPlaying = !isPlaying })
-        }
-
-        Spacer(modifier = Modifier.height(40.dp))
     }
 }
 
 @Composable
-fun ProfileCard() {
+fun BackstageCard() {
     Box(
         modifier = Modifier
             .width(320.dp)
-            .height(280.dp)
+            .height(380.dp)
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
@@ -118,10 +143,10 @@ fun ProfileCard() {
                         Color(0xFFFF9800)
                     )
                 ),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(12.dp)
             )
-            .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(16.dp))
-            .padding(20.dp)
+            .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(12.dp))
+            .padding(16.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -135,19 +160,19 @@ fun ProfileCard() {
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = "Edit",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    tint = Color(0xFF010B19),
+                    modifier = Modifier.size(32.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Profile Picture
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(96.dp)
                     .background(Color(0xFF2196F3), CircleShape)
-                    .border(2.dp, Color.White, CircleShape),
+                    .border(2.5.dp, Color.White.copy(alpha = 0.25f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -158,51 +183,56 @@ fun ProfileCard() {
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Username
             Text(
                 text = "Higan",
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
+                color = Color(0xFF010B19),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Title Badge
             Box(
                 modifier = Modifier
-                    .background(Color(0xFF010B19), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .background(Color(0xFF010B19), RoundedCornerShape(50.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(50.dp))
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "Ninja",
+                    text = "Hero X",
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(5.dp))
 
             // Bio
             Text(
                 text = "From calm seas to wild storms — I have a track for it 🌊⚡",
-                color = Color.White,
-                fontSize = 14.sp,
+                color = Color(0xFF010B19),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                lineHeight = 18.sp
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
             // QR Code placeholder
             Box(
                 modifier = Modifier
-                    .size(60.dp)
-                    .background(Color.White, RoundedCornerShape(8.dp))
-                    .border(1.dp, Color.Black, RoundedCornerShape(8.dp)),
+                    .size(100.dp)
+                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFF010B19), RoundedCornerShape(12.dp))
+                    .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -217,115 +247,144 @@ fun ProfileCard() {
 }
 
 @Composable
-fun SectionWithTitle(title: String, content: @Composable () -> Unit) {
-    Column {
-        // Title with lines
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(20.dp)
-                    .height(1.dp)
-                    .background(Color(0xFFB4B1B8))
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = title,
-                color = Color(0xFFE9E8EE),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Box(
-                modifier = Modifier
-                    .width(20.dp)
-                    .height(1.dp)
-                    .background(Color(0xFFB4B1B8))
-            )
+fun DottedLine() {
+    Canvas(
+        modifier = Modifier
+            .width(320.dp)
+            .height(2.dp)
+    ) {
+        val paint = androidx.compose.ui.graphics.Paint().apply {
+            color = Color(0xFFB4B1B8)
+            strokeWidth = 2f
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        content()
+        
+        val dashWidth = 6f
+        val dashSpace = 4f
+        var startX = 0f
+        
+        while (startX < size.width) {
+            drawLine(
+                start = androidx.compose.ui.geometry.Offset(startX, 0f),
+                end = androidx.compose.ui.geometry.Offset(startX + dashWidth, 0f),
+                paint = paint
+            )
+            startX += dashWidth + dashSpace
+        }
     }
 }
 
 @Composable
-fun AchievementBadge(icon: String, color: Color) {
+fun SectionTitle(title: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.54f))
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = title,
+            color = Color.White,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.54f))
+        )
+    }
+}
+
+@Composable
+fun AchievementCircle(image: String) {
     Box(
         modifier = Modifier
-            .size(50.dp)
-            .background(color, CircleShape)
+            .size(52.dp)
+            .background(Color.Transparent, CircleShape)
             .border(2.dp, Color.White, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = icon,
+            text = "🏆",
             fontSize = 20.sp
         )
     }
 }
 
 @Composable
-fun FriendAvatar(name: String, color: Color) {
+fun FriendCircle(image: String, status: FriendStatus) {
+    val borderColor = when (status) {
+        FriendStatus.ONLINE -> Color(0xFF4CAF50)
+        FriendStatus.AWAY -> Color(0xFFFFC107)
+        FriendStatus.OFFLINE -> Color(0xFFF44336)
+    }
+    
     Box(
         modifier = Modifier
-            .size(50.dp)
-            .background(color, CircleShape)
-            .border(2.dp, Color.White, CircleShape),
+            .size(52.dp)
+            .background(Color.Transparent, CircleShape)
+            .border(2.dp, borderColor, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = name.take(1),
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
+            text = "👤",
+            fontSize = 20.sp
         )
     }
 }
 
 @Composable
-fun PlusBadge() {
+fun PlusIcon() {
     Box(
         modifier = Modifier
-            .size(50.dp)
-            .background(Color.Transparent, CircleShape)
-            .border(2.dp, Color(0xFFB4B1B8), CircleShape),
+            .size(60.dp),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Default.Add,
             contentDescription = "Add",
-            tint = Color(0xFFB4B1B8),
-            modifier = Modifier.size(20.dp)
+            tint = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.size(60.dp)
         )
     }
 }
 
+enum class FriendStatus { ONLINE, AWAY, OFFLINE }
+
 @Composable
-fun MusicPlayerCard(track: Track, isPlaying: Boolean, onPlayPause: () -> Unit) {
+fun MiniSongReproductor(
+    track: Track,
+    isPlaying: Boolean,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit
+) {
     Row(
         modifier = Modifier
-            .fillMaxWidth()
+            .width(400.dp)
+            .height(62.dp)
             .background(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF4CAF50), Color(0xFF2196F3))
-                ),
-                shape = RoundedCornerShape(12.dp)
+                Color(0xFF010B19),
+                RoundedCornerShape(30.5.dp)
             )
-            .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(12.dp))
-            .padding(12.dp),
+            .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(30.5.dp))
+            .padding(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Album Art
         Box(
             modifier = Modifier
-                .size(40.dp)
-                .background(Color(0xFF2C2C2C), RoundedCornerShape(4.dp))
-                .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(4.dp)),
+                .size(60.dp)
+                .background(Color(0xFF2C2C2C), CircleShape)
+                .border(1.dp, Color(0xFFB4B1B8), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -334,63 +393,75 @@ fun MusicPlayerCard(track: Track, isPlaying: Boolean, onPlayPause: () -> Unit) {
             )
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(6.dp))
 
         // Track Info
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 6.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
             Text(
                 text = track.title,
                 color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = track.artist,
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 12.sp
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
         // Controls
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             IconButton(
-                onClick = { /* Previous */ },
-                modifier = Modifier.size(32.dp)
+                onClick = onPrevious,
+                modifier = Modifier.size(22.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.SkipPrevious,
                     contentDescription = "Previous",
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
+                    tint = Color(0xFFE9E8EE),
+                    modifier = Modifier.size(22.dp)
                 )
             }
 
             IconButton(
                 onClick = onPlayPause,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(26.dp)
             ) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (isPlaying) "Pause" else "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
+                    tint = Color(0xFFE9E8EE),
+                    modifier = Modifier.size(26.dp)
                 )
             }
 
             IconButton(
-                onClick = { /* Next */ },
-                modifier = Modifier.size(32.dp)
+                onClick = onNext,
+                modifier = Modifier.size(22.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.SkipNext,
                     contentDescription = "Next",
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
+                    tint = Color(0xFFE9E8EE),
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
+        
+        Spacer(modifier = Modifier.width(6.dp))
     }
 }
 
