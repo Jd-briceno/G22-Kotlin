@@ -243,37 +243,51 @@ class SpotifyService {
         val playlists = mutableListOf<Playlist>()
 
         try {
-            val url = URL("https://api.spotify.com/v1/browse/featured-playlists?market=$market&limit=10")
+            // Usar search con términos más específicos para obtener playlists destacadas
+            val url = URL("https://api.spotify.com/v1/search?q=trending%20playlist&type=playlist&limit=10&market=$market")
             val connection = url.openConnection() as HttpURLConnection
 
             connection.requestMethod = "GET"
             connection.setRequestProperty("Authorization", "Bearer $token")
 
             val responseCode = connection.responseCode
+            println("🔎 Featured playlists response: $responseCode")
+            
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
                 val jsonResponse = gson.fromJson(response, JsonObject::class.java)
                 val playlistsData = jsonResponse.getAsJsonObject("playlists")
                 val items = playlistsData?.getAsJsonArray("items")
 
-                items?.forEach { item ->
-                    val playlistObj = item.asJsonObject
-                    val images = playlistObj.getAsJsonArray("images")
-                    val coverUrl = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+                println("🔎 Found ${items?.size() ?: 0} featured playlists")
 
-                    playlists.add(
-                        Playlist(
-                            title = playlistObj.get("name")?.asString ?: "",
-                            cover = coverUrl,
-                            id = playlistObj.get("id")?.asString,
-                            description = playlistObj.get("description")?.asString,
-                            trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                items?.forEach { item ->
+                    try {
+                        val playlistObj = item.asJsonObject
+                        val images = playlistObj.getAsJsonArray("images")
+                        val coverUrl = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+
+                        playlists.add(
+                            Playlist(
+                                title = playlistObj.get("name")?.asString ?: "",
+                                cover = coverUrl,
+                                id = playlistObj.get("id")?.asString,
+                                description = playlistObj.get("description")?.asString,
+                                trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                            )
                         )
-                    )
+                    } catch (e: Exception) {
+                        println("❌ Error parsing featured playlist item: ${e.message}")
+                    }
                 }
+            } else {
+                println("❌ Error getting featured playlists: $responseCode")
+                val errorResponse = connection.errorStream?.bufferedReader()?.readText()
+                println("❌ Error response: $errorResponse")
             }
         } catch (e: Exception) {
-            println("❌ Error getting featured playlists: ${e.message}")
+            println("❌ Exception getting featured playlists: ${e.message}")
+            e.printStackTrace()
         }
 
         playlists
@@ -285,37 +299,58 @@ class SpotifyService {
         val playlists = mutableListOf<Playlist>()
 
         try {
-            val url = URL("https://api.spotify.com/v1/browse/categories/$categoryId/playlists?market=$market&limit=10")
+            // Usar search con términos más específicos para obtener playlists de la categoría
+            val searchTerm = when (categoryId.lowercase()) {
+                "pop" -> "pop%20playlist"
+                "rock" -> "rock%20playlist"
+                "jazz" -> "jazz%20playlist"
+                "electronic" -> "electronic%20playlist"
+                else -> "$categoryId%20playlist"
+            }
+            val url = URL("https://api.spotify.com/v1/search?q=$searchTerm&type=playlist&limit=10&market=$market")
             val connection = url.openConnection() as HttpURLConnection
 
             connection.requestMethod = "GET"
             connection.setRequestProperty("Authorization", "Bearer $token")
 
             val responseCode = connection.responseCode
+            println("🔎 Category playlists response for $categoryId: $responseCode")
+            
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
                 val jsonResponse = gson.fromJson(response, JsonObject::class.java)
                 val playlistsData = jsonResponse.getAsJsonObject("playlists")
                 val items = playlistsData?.getAsJsonArray("items")
 
-                items?.forEach { item ->
-                    val playlistObj = item.asJsonObject
-                    val images = playlistObj.getAsJsonArray("images")
-                    val coverUrl = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+                println("🔎 Found ${items?.size() ?: 0} category playlists for $categoryId")
 
-                    playlists.add(
-                        Playlist(
-                            title = playlistObj.get("name")?.asString ?: "",
-                            cover = coverUrl,
-                            id = playlistObj.get("id")?.asString,
-                            description = playlistObj.get("description")?.asString,
-                            trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                items?.forEach { item ->
+                    try {
+                        val playlistObj = item.asJsonObject
+                        val images = playlistObj.getAsJsonArray("images")
+                        val coverUrl = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+
+                        playlists.add(
+                            Playlist(
+                                title = playlistObj.get("name")?.asString ?: "",
+                                cover = coverUrl,
+                                id = playlistObj.get("id")?.asString,
+                                description = playlistObj.get("description")?.asString,
+                                trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                            )
                         )
-                    )
+                    } catch (e: Exception) {
+                        println("❌ Error parsing category playlist item: ${e.message}")
+                    }
                 }
+            } else {
+                println("❌ Error getting category playlists: $responseCode")
+                val errorResponse = connection.errorStream?.bufferedReader()?.readText()
+                println("❌ Error response: $errorResponse")
             }
         } catch (e: Exception) {
-            println("❌ Error getting category playlists: ${e.message}")
+            println("❌ Exception getting category playlists: ${e.message}")
+            e.printStackTrace()
         }
 
         playlists
