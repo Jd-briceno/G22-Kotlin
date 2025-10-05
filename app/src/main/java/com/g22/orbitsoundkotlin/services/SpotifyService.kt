@@ -34,6 +34,10 @@ class SpotifyService {
 
     suspend fun getAccessToken(): String? = withContext(Dispatchers.IO) {
         try {
+            println("🔑 Getting access token...")
+            println("🔑 Client ID: ${if (clientId == "YOUR_SPOTIFY_CLIENT_ID") "NOT SET" else "SET"}")
+            println("🔑 Client Secret: ${if (clientSecret == "YOUR_SPOTIFY_CLIENT_SECRET") "NOT SET" else "SET"}")
+            
             val credentials = Base64.encodeToString(
                 "$clientId:$clientSecret".toByteArray(),
                 Base64.NO_WRAP
@@ -51,16 +55,23 @@ class SpotifyService {
             connection.outputStream.use { it.write(postData.toByteArray()) }
 
             val responseCode = connection.responseCode
+            println("📡 Token response code: $responseCode")
+            
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
                 val jsonResponse = gson.fromJson(response, JsonObject::class.java)
-                jsonResponse.get("access_token")?.asString
+                val token = jsonResponse.get("access_token")?.asString
+                println("✅ Token obtained successfully")
+                token
             } else {
                 println("❌ Error getting token: $responseCode")
+                val errorResponse = connection.errorStream?.bufferedReader()?.readText()
+                println("❌ Token error response: $errorResponse")
                 null
             }
         } catch (e: Exception) {
             println("❌ Exception getting token: ${e.message}")
+            e.printStackTrace()
             null
         }
     }
@@ -162,7 +173,14 @@ class SpotifyService {
     }
 
     suspend fun searchTracks(query: String, market: String = "US"): List<Track> = withContext(Dispatchers.IO) {
-        val token = getAccessToken() ?: return@withContext emptyList()
+        println("🔍 Searching tracks for: '$query' in market: $market")
+        
+        val token = getAccessToken()
+        if (token == null) {
+            println("❌ No access token available")
+            return@withContext emptyList()
+        }
+        println("✅ Access token obtained")
 
         try {
             val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
@@ -173,27 +191,36 @@ class SpotifyService {
             connection.setRequestProperty("Authorization", "Bearer $token")
 
             val responseCode = connection.responseCode
+            println("📡 Response code: $responseCode")
+            
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
                 val jsonResponse = gson.fromJson(response, JsonObject::class.java)
                 val tracksData = jsonResponse.getAsJsonObject("tracks")
                 val items = tracksData?.getAsJsonArray("items")
 
+                println("📊 Found ${items?.size() ?: 0} tracks")
+
                 val tracks = mutableListOf<Track>()
                 items?.forEach { item ->
                     val trackObj = item.asJsonObject
                     if (trackObj.get("id") != null) {
                         val track = Track.fromSpotify(trackObj.asMap())
+                        println("🎵 Track: ${track.title} by ${track.artist} - Image: ${track.albumArt}")
                         tracks.add(track)
                     }
                 }
+                println("✅ Returning ${tracks.size} tracks")
                 tracks
             } else {
                 println("❌ Error searching tracks: $responseCode")
+                val errorResponse = connection.errorStream?.bufferedReader()?.readText()
+                println("❌ Error response: $errorResponse")
                 emptyList()
             }
         } catch (e: Exception) {
             println("❌ Exception searching tracks: ${e.message}")
+            e.printStackTrace()
             emptyList()
         }
     }
