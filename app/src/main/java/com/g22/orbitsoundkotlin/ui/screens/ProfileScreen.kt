@@ -48,10 +48,10 @@ fun ProfileScreen(
             .fillMaxSize()
             .background(Color(0xFF010B19))
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 20.dp),
+            .padding(horizontal = 16.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(40.dp))
 
         // Navbar
         OrbitNavbar(
