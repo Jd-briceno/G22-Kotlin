@@ -34,7 +34,8 @@ import kotlinx.coroutines.async
 
 @Composable
 fun LibraryScreen(
-    onNavigateToProfile: () -> Unit = {}
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {}
 ) {
     val spotifyService = remember { SpotifyService() }
     var songs by remember { mutableStateOf<List<Track>>(emptyList()) }
@@ -184,37 +185,15 @@ fun LibraryScreen(
 
         // Library Header
         item {
-            Row(
+            Text(
+                text = "Library",
+                color = Color(0xFFE9E8EE),
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Library",
-                    color = Color(0xFFE9E8EE),
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Row {
-                    IconButton(onClick = { /* Add playlist */ }) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add",
-                            tint = Color(0xFFE9E8EE)
-                        )
-                    }
-                    IconButton(onClick = { /* More options */ }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More",
-                            tint = Color(0xFFE9E8EE)
-                        )
-                    }
-                }
-            }
+                    .padding(vertical = 16.dp)
+            )
         }
 
         // Playlist Sections con datos reales de Spotify
@@ -340,7 +319,7 @@ fun NavbarComposable(
         ) {
             // Botón Home
             IconButton(
-                onClick = { /* Home action */ },
+                onClick = onNavigateToHome,
                 modifier = Modifier
                     .size(40.dp)
                     .background(

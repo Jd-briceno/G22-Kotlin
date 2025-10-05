@@ -355,13 +355,16 @@ private fun OrbitSoundApp() {
             is AppDestination.StellarEmotions -> {
                 StellarEmotionsScreen(username = current.user.email ?: "User")
             }
-            is AppDestination.Library -> {
-                LibraryScreen(
-                    onNavigateToProfile = {
-                        // TODO: Implementar navegación al perfil si es necesario
-                    }
-                )
+    is AppDestination.Library -> {
+        LibraryScreen(
+            onNavigateToProfile = {
+                // TODO: Implementar navegación al perfil si es necesario
+            },
+            onNavigateToHome = {
+                destination = AppDestination.Home(current.user)
             }
+        )
+    }
         }
     }
 }
