@@ -38,29 +38,55 @@ fun LibraryScreen(
     var songs by remember { mutableStateOf<List<Track>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    
+    // 🎵 Playlists reales de Spotify
+    var starlightPlaylists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
+    var djNovaPlaylists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
+    var eternalHitsPlaylists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
+    var orbitCrewPlaylists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
+    var playlistsLoading by remember { mutableStateOf(true) }
 
-    // 🎨 Playlists simuladas (igual que en Flutter)
-    val djRecommendations = listOf(
-        Playlist("Electronic Sunset", "https://i.scdn.co/image/ab67616d0000b273e59f65e3c9131d123456aaaa"),
-        Playlist("Deep House Mix", "https://i.scdn.co/image/ab67616d0000b2739f39e8b3dff67aa987654bbb")
-    )
-
-    val friendsPlaylists = listOf(
-        Playlist("Rock Classics", "https://i.scdn.co/image/ab67616d0000b27311223344aabbccddeeff0011"),
-        Playlist("Indie Dreams", "https://i.scdn.co/image/ab67616d0000b27399887766aabbccddeeff2233")
-    )
-
-    val myPlaylists = listOf(
-        Playlist("Roll a d20", "assets/images/Dungeons.jpg"),
-        Playlist("Workout", "https://i.scdn.co/image/ab67616d0000b273f62a7e2c97d11af987654321"),
-        Playlist("Jazz Nights", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123")
-    )
-
-    val recommendedPlaylists = listOf(
-        Playlist("Lofi", "assets/images/Kamui.jpg"),
-        Playlist("Workout", "https://i.scdn.co/image/ab67616d0000b273f62a7e2c97d11af987654321"),
-        Playlist("Jazz Nights", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123")
-    )
+    // Cargar playlists al iniciar
+    LaunchedEffect(Unit) {
+        try {
+            playlistsLoading = true
+            
+            // Cargar playlists en paralelo
+            val starlightDeferred = async { spotifyService.getGenrePlaylists("lofi") }
+            val djNovaDeferred = async { spotifyService.getFeaturedPlaylists() }
+            val eternalHitsDeferred = async { spotifyService.getGenrePlaylists("rock") }
+            val orbitCrewDeferred = async { spotifyService.getCategoryPlaylists("pop") }
+            
+            starlightPlaylists = starlightDeferred.await()
+            djNovaPlaylists = djNovaDeferred.await()
+            eternalHitsPlaylists = eternalHitsDeferred.await()
+            orbitCrewPlaylists = orbitCrewDeferred.await()
+            
+        } catch (e: Exception) {
+            println("Error cargando playlists: ${e.message}")
+            // Fallback a playlists locales si falla la API
+            starlightPlaylists = listOf(
+                Playlist("Roll a d20", "assets/images/Dungeons.jpg"),
+                Playlist("Good Vibes", "assets/images/Good.jpg"),
+                Playlist("Jazz Nights", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123")
+            )
+            djNovaPlaylists = listOf(
+                Playlist("Lofi", "assets/images/Lofi.jpg"),
+                Playlist("Study", "assets/images/Study.jpg"),
+                Playlist("Jazz Nights", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123")
+            )
+            eternalHitsPlaylists = listOf(
+                Playlist("Hunting soul", "assets/images/Hunting.jpg"),
+                Playlist("Ruined King", "assets/images/Ruined.jpg")
+            )
+            orbitCrewPlaylists = listOf(
+                Playlist("I Believe", "assets/images/UFO.jpg"),
+                Playlist("Indie Dreams", "assets/images/Indie.jpg")
+            )
+        } finally {
+            playlistsLoading = false
+        }
+    }
 
     // Función para buscar canciones
     fun searchSongs(query: String) {
@@ -183,47 +209,48 @@ fun LibraryScreen(
             }
         }
 
-        // Playlist Sections (igual que en Flutter)
-        item {
-            PlaylistSection(
-                title = "✨ Starlight Suggestions",
-                playlists = listOf(
-                    Playlist("Roll a d20", "assets/images/Dungeons.jpg"),
-                    Playlist("Good Vibes", "assets/images/Good.jpg"),
-                    Playlist("Jazz Nights", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123")
+        // Playlist Sections con datos reales de Spotify
+        if (playlistsLoading) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Color(0xFFE9E8EE)
+                    )
+                }
+            }
+        } else {
+            item {
+                PlaylistSection(
+                    title = "✨ Starlight Suggestions",
+                    playlists = starlightPlaylists
                 )
-            )
-        }
+            }
 
-        item {
-            PlaylistSection(
-                title = "🎧 DJ Nova's Set",
-                playlists = listOf(
-                    Playlist("Lofi", "assets/images/Lofi.jpg"),
-                    Playlist("Study", "assets/images/Study.jpg"),
-                    Playlist("Jazz Nights", "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123")
+            item {
+                PlaylistSection(
+                    title = "🎧 DJ Nova's Set",
+                    playlists = djNovaPlaylists
                 )
-            )
-        }
+            }
 
-        item {
-            PlaylistSection(
-                title = "💖 Eternal Hits",
-                playlists = listOf(
-                    Playlist("Hunting soul", "assets/images/Hunting.jpg"),
-                    Playlist("Ruined King", "assets/images/Ruined.jpg")
+            item {
+                PlaylistSection(
+                    title = "💖 Eternal Hits",
+                    playlists = eternalHitsPlaylists
                 )
-            )
-        }
+            }
 
-        item {
-            PlaylistSection(
-                title = "🎧 Orbit Crew Playlist",
-                playlists = listOf(
-                    Playlist("I Believe", "assets/images/UFO.jpg"),
-                    Playlist("Indie Dreams", "assets/images/Indie.jpg")
+            item {
+                PlaylistSection(
+                    title = "🎧 Orbit Crew Playlist",
+                    playlists = orbitCrewPlaylists
                 )
-            )
+            }
         }
 
         item {
@@ -410,7 +437,7 @@ fun SearchBarComposable(
                 )
             },
             modifier = Modifier
-                .offset(y = 15.dp)
+       set(y = 15.dp)
                 .fillMaxWidth()
                 .height(50.dp)
                 .padding(horizontal = 16.dp),
@@ -432,7 +459,7 @@ fun SearchBarComposable(
         // Círculos concéntricos (como en Flutter)
         Box(
             modifier = Modifier
-                .offset(x = 16.dp, y = 15.dp)
+                .offset(x = 16.dp, y = 0.dp) // Ajustado para alinear con el input
                 .align(Alignment.CenterEnd)
         ) {
             // Círculo exterior
