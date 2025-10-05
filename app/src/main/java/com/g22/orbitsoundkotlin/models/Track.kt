@@ -19,13 +19,23 @@ data class Track(
             val minutes = durationMs / 60000
             val seconds = (durationMs % 60000) / 1000
 
-            val artists = (json["artists"] as? List<Map<String, Any?>>)?.mapNotNull { artist ->
-                artist["name"] as? String
+            // Manejar artists como List<Any> (que puede contener Map<String, Any?>)
+            val artists = (json["artists"] as? List<*>)?.mapNotNull { artist ->
+                when (artist) {
+                    is Map<*, *> -> artist["name"] as? String
+                    else -> null
+                }
             }?.filter { it.isNotEmpty() } ?: emptyList()
 
+            // Manejar album como Map<String, Any?>
             val album = json["album"] as? Map<String, Any?>
-            val images = album?.get("images") as? List<Map<String, Any?>>
-            val albumArtUrl = images?.firstOrNull()?.get("url") as? String ?: ""
+            val images = album?.get("images") as? List<*>
+            val albumArtUrl = images?.firstOrNull()?.let { image ->
+                when (image) {
+                    is Map<*, *> -> image["url"] as? String
+                    else -> null
+                }
+            } ?: ""
 
             return Track(
                 title = json["name"] as? String ?: "",

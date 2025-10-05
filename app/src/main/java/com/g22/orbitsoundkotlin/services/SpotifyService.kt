@@ -1,6 +1,7 @@
 package com.g22.orbitsoundkotlin.services
 
 import android.util.Base64
+import com.g22.orbitsoundkotlin.BuildConfig
 import com.g22.orbitsoundkotlin.models.Track
 import com.g22.orbitsoundkotlin.models.Playlist
 import com.google.gson.Gson
@@ -12,18 +13,16 @@ import java.net.URL
 import java.util.Random
 
 class SpotifyService {
-    private val clientId = "YOUR_SPOTIFY_CLIENT_ID"
-    private val clientSecret = "YOUR_SPOTIFY_CLIENT_SECRET"
+    private val clientId = BuildConfig.SPOTIFY_CLIENT_ID
+    private val clientSecret = BuildConfig.SPOTIFY_CLIENT_SECRET
     private val gson = Gson()
 
-    // 🌎 Lista de mercados (random para variar resultados)
     private val markets = listOf(
         "US", "GB", "DE", "JP", "KR", "MX", "BR", "FR", "ES", "IT",
         "CA", "AR", "AU", "CL", "CO", "NL", "SE", "NO", "FI", "DK",
         "PL", "PT", "IE", "NZ", "TR", "IL", "IN", "ID", "TH", "SG", "RU"
     )
 
-    // 🎯 Queries especiales por género
     private val specialQueries = mapOf(
         "j-rock" to listOf("J-Rock", "Japanese Rock", "邦楽ロック"),
         "k-pop" to listOf("K-Pop", "케이팝", "Korean Pop"),
@@ -50,16 +49,15 @@ class SpotifyService {
             connection.outputStream.use { it.write(postData.toByteArray()) }
 
             val responseCode = connection.responseCode
+            
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
                 val jsonResponse = gson.fromJson(response, JsonObject::class.java)
                 jsonResponse.get("access_token")?.asString
             } else {
-                println("❌ Error getting token: $responseCode")
                 null
             }
         } catch (e: Exception) {
-            println("❌ Exception getting token: ${e.message}")
             null
         }
     }
@@ -69,10 +67,7 @@ class SpotifyService {
         val playlists = mutableListOf<Playlist>()
         val random = Random()
 
-        // 🎲 Elegir mercado aleatorio
         val market = markets[random.nextInt(markets.size)]
-
-        // ✅ Obtener queries especiales si existen, sino usamos el género literal
         val queries = specialQueries[genre.lowercase()] ?: listOf(genre)
 
         for (query in queries) {
@@ -92,31 +87,31 @@ class SpotifyService {
                     val items = playlistsData?.getAsJsonArray("items")
 
                     items?.forEach { item ->
-                        val playlistObj = item.asJsonObject
-                        val images = playlistObj.getAsJsonObject("images")
-                        val coverUrl = images?.getAsJsonArray("images")?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+                        try {
+                            val playlistObj = item.asJsonObject
+                            val images = playlistObj.getAsJsonArray("images")
+                            val coverUrl = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
 
-                        playlists.add(
-                            Playlist(
-                                title = playlistObj.get("name")?.asString ?: "",
-                                cover = coverUrl,
-                                id = playlistObj.get("id")?.asString,
-                                description = playlistObj.get("description")?.asString,
-                                trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                            playlists.add(
+                                Playlist(
+                                    title = playlistObj.get("name")?.asString ?: "",
+                                    cover = coverUrl,
+                                    id = playlistObj.get("id")?.asString,
+                                    description = playlistObj.get("description")?.asString,
+                                    trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                                )
                             )
-                        )
+                        } catch (e: Exception) {
+                            // Skip invalid playlist items
+                        }
                     }
-                } else {
-                    println("❌ Error searching playlists for $query in $market: $responseCode")
                 }
             } catch (e: Exception) {
-                println("❌ Exception searching playlists: ${e.message}")
+                // Skip failed queries
             }
         }
 
-        // 🔀 Mezclar resultados
         playlists.shuffle()
-        println("🔎 Found ${playlists.size} playlists for $genre in $market")
         playlists
     }
 
@@ -147,21 +142,21 @@ class SpotifyService {
                     }
                 }
 
-                // 🔀 Mezclar y limitar a 15
                 tracks.shuffle()
                 tracks.take(15)
             } else {
-                println("❌ Error fetching tracks: $responseCode")
                 emptyList()
             }
         } catch (e: Exception) {
-            println("❌ Exception fetching tracks: ${e.message}")
             emptyList()
         }
     }
 
     suspend fun searchTracks(query: String, market: String = "US"): List<Track> = withContext(Dispatchers.IO) {
-        val token = getAccessToken() ?: return@withContext emptyList()
+        val token = getAccessToken()
+        if (token == null) {
+            return@withContext emptyList()
+        }
 
         try {
             val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
@@ -170,8 +165,10 @@ class SpotifyService {
 
             connection.requestMethod = "GET"
             connection.setRequestProperty("Authorization", "Bearer $token")
+            connection.setRequestProperty("Content-Type", "application/json")
 
             val responseCode = connection.responseCode
+
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
                 val jsonResponse = gson.fromJson(response, JsonObject::class.java)
@@ -182,23 +179,132 @@ class SpotifyService {
                 items?.forEach { item ->
                     val trackObj = item.asJsonObject
                     if (trackObj.get("id") != null) {
-                        val track = Track.fromSpotify(trackObj.asMap())
+                        val title = trackObj.get("name")?.asString ?: "Unknown"
+                        val artists = trackObj.getAsJsonArray("artists")?.map { it.asJsonObject.get("name")?.asString ?: "" }?.joinToString(", ") ?: "Unknown"
+                        val durationMs = trackObj.get("duration_ms")?.asInt ?: 0
+                        val minutes = durationMs / 60000
+                        val seconds = (durationMs % 60000) / 1000
+                        val duration = String.format("%d:%02d", minutes, seconds)
+                        val album = trackObj.getAsJsonObject("album")
+                        val images = album?.getAsJsonArray("images")
+                        val albumArt = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+
+                        val track = Track(title, artists, duration, durationMs, albumArt)
                         tracks.add(track)
                     }
                 }
                 tracks
             } else {
-                println("❌ Error searching tracks: $responseCode")
+                if (responseCode == 400 && query.isNotEmpty()) {
+                    return@withContext searchTracks(query.split(" ").first(), market)
+                }
                 emptyList()
             }
         } catch (e: Exception) {
-            println("❌ Exception searching tracks: ${e.message}")
             emptyList()
         }
     }
+
+    suspend fun getFeaturedPlaylists(market: String = "US"): List<Playlist> = withContext(Dispatchers.IO) {
+        val token = getAccessToken() ?: return@withContext emptyList()
+        val playlists = mutableListOf<Playlist>()
+
+        try {
+            val url = URL("https://api.spotify.com/v1/search?q=trending%20playlist&type=playlist&limit=10&market=$market")
+            val connection = url.openConnection() as HttpURLConnection
+
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Authorization", "Bearer $token")
+
+            val responseCode = connection.responseCode
+            
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = connection.inputStream.bufferedReader().readText()
+                val jsonResponse = gson.fromJson(response, JsonObject::class.java)
+                val playlistsData = jsonResponse.getAsJsonObject("playlists")
+                val items = playlistsData?.getAsJsonArray("items")
+
+                items?.forEach { item ->
+                    try {
+                        val playlistObj = item.asJsonObject
+                        val images = playlistObj.getAsJsonArray("images")
+                        val coverUrl = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+
+                        playlists.add(
+                            Playlist(
+                                title = playlistObj.get("name")?.asString ?: "",
+                                cover = coverUrl,
+                                id = playlistObj.get("id")?.asString,
+                                description = playlistObj.get("description")?.asString,
+                                trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                            )
+                        )
+                    } catch (e: Exception) {
+                        // Skip invalid playlist items
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Skip on error
+        }
+
+        playlists
+    }
+
+    suspend fun getCategoryPlaylists(categoryId: String, market: String = "US"): List<Playlist> = withContext(Dispatchers.IO) {
+        val token = getAccessToken() ?: return@withContext emptyList()
+        val playlists = mutableListOf<Playlist>()
+
+        try {
+            val searchTerm = when (categoryId.lowercase()) {
+                "pop" -> "pop%20playlist"
+                "rock" -> "rock%20playlist"
+                "jazz" -> "jazz%20playlist"
+                "electronic" -> "electronic%20playlist"
+                else -> "$categoryId%20playlist"
+            }
+            val url = URL("https://api.spotify.com/v1/search?q=$searchTerm&type=playlist&limit=10&market=$market")
+            val connection = url.openConnection() as HttpURLConnection
+
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Authorization", "Bearer $token")
+
+            val responseCode = connection.responseCode
+            
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = connection.inputStream.bufferedReader().readText()
+                val jsonResponse = gson.fromJson(response, JsonObject::class.java)
+                val playlistsData = jsonResponse.getAsJsonObject("playlists")
+                val items = playlistsData?.getAsJsonArray("items")
+
+                items?.forEach { item ->
+                    try {
+                        val playlistObj = item.asJsonObject
+                        val images = playlistObj.getAsJsonArray("images")
+                        val coverUrl = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
+
+                        playlists.add(
+                            Playlist(
+                                title = playlistObj.get("name")?.asString ?: "",
+                                cover = coverUrl,
+                                id = playlistObj.get("id")?.asString,
+                                description = playlistObj.get("description")?.asString,
+                                trackCount = playlistObj.getAsJsonObject("tracks")?.get("total")?.asInt
+                            )
+                        )
+                    } catch (e: Exception) {
+                        // Skip invalid playlist items
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Skip on error
+        }
+
+        playlists
+    }
 }
 
-// Extensión para convertir JsonObject a Map
 private fun JsonObject.asMap(): Map<String, Any?> {
     val map = mutableMapOf<String, Any?>()
     this.entrySet().forEach { entry ->

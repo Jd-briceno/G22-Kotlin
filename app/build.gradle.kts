@@ -19,6 +19,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // 🔑 Variables de entorno para Spotify
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${getSpotifyClientId()}\"")
+        buildConfigField("String", "SPOTIFY_CLIENT_SECRET", "\"${getSpotifyClientSecret()}\"")
     }
 
     buildTypes {
@@ -39,6 +43,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -47,11 +52,18 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(platform("androidx.compose:compose-bom:2024.10.00"))
+
+    // 🔥 Use the Compose BOM platform from your version catalog
+    implementation(platform(libs.androidx.compose.bom))
+
+    // ✅ Now, implement Compose libraries WITHOUT specifying versions
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation("androidx.compose.foundation:foundation-layout") // No version needed
+    implementation("androidx.compose.material:material-icons-core") // No version needed
+    implementation("androidx.compose.material:material-icons-extended") // No version needed
 
 
     implementation("androidx.compose.foundation:foundation-layout")
@@ -61,6 +73,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
+    // Other dependencies (look fine)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("io.coil-kt:coil-compose:2.5.0")
@@ -76,10 +89,11 @@ dependencies {
     implementation(libs.play.services.auth)
     implementation(libs.kotlinx.coroutines.play.services)
 
+    // Test dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(platform(libs.androidx.compose.bom)) // BOM for tests too
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
@@ -89,4 +103,12 @@ dependencies {
 
     // This provides the @Inject annotation
     implementation("javax.inject:javax.inject:1")
+}
+
+fun getSpotifyClientId(): String {
+    return project.findProperty("SPOTIFY_CLIENT_ID") as? String ?: "YOUR_SPOTIFY_CLIENT_ID"
+}
+
+fun getSpotifyClientSecret(): String {
+    return project.findProperty("SPOTIFY_CLIENT_SECRET") as? String ?: "YOUR_SPOTIFY_CLIENT_SECRET"
 }

@@ -37,7 +37,9 @@ import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
 import com.g22.orbitsoundkotlin.data.userPreferencesStore
 import com.g22.orbitsoundkotlin.ui.screens.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
+import com.g22.orbitsoundkotlin.ui.screens.LibraryScreen
 import com.g22.orbitsoundkotlin.ui.screens.LoginScreen
+import com.g22.orbitsoundkotlin.ui.screens.ProfileScreen
 import com.g22.orbitsoundkotlin.ui.screens.SignupScreen
 import com.g22.orbitsoundkotlin.ui.screens.StellarEmotionsScreen
 import com.g22.orbitsoundkotlin.ui.screens.ConstellationsScreen
@@ -343,6 +345,12 @@ private fun OrbitSoundApp() {
                         user = current.user,
                         onNavigateToStellarEmotions = {
                             destination = AppDestination.StellarEmotions(current.user)
+                        },
+                        onNavigateToLibrary = {
+                            destination = AppDestination.Library(current.user)
+                        },
+                        onNavigateToProfile = {
+                            destination = AppDestination.Profile(current.user)
                         }
                     )
                     // Testing purposes:
@@ -366,6 +374,23 @@ private fun OrbitSoundApp() {
                     }
                 )
             }
+    is AppDestination.Library -> {
+        LibraryScreen(
+            onNavigateToProfile = {
+                destination = AppDestination.Profile(current.user)
+            },
+            onNavigateToHome = {
+                destination = AppDestination.Home(current.user)
+            }
+        )
+    }
+    is AppDestination.Profile -> {
+        ProfileScreen(
+            onNavigateToHome = {
+                destination = AppDestination.Home(current.user)
+            }
+        )
+    }
         }
     }
 }
@@ -377,4 +402,6 @@ private sealed interface AppDestination {
     data class Home(val user: AuthUser) : AppDestination
     data class StellarEmotions(val user: AuthUser) : AppDestination
     data class Constellations(val user: AuthUser) : AppDestination
+    data class Library(val user: AuthUser) : AppDestination
+    data class Profile(val user: AuthUser) : AppDestination
 }

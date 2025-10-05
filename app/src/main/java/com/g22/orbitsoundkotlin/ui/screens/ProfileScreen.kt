@@ -1,6 +1,8 @@
 package com.g22.orbitsoundkotlin.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,49 +12,32 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.foundation.border
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.g22.orbitsoundkotlin.models.*
-import com.g22.orbitsoundkotlin.ui.components.*
+import com.g22.orbitsoundkotlin.models.Track
 
 @Composable
 fun ProfileScreen(
-    onNavigateToLibrary: () -> Unit = {}
+    onNavigateToHome: () -> Unit = {}
 ) {
-    val userProfile = remember {
-        UserProfile(
-            id = "1",
-            username = "Higan",
-            title = "Ninja",
-            description = "From calm seas to wild storms — I have a track for it 🌊⚡",
-            avatarUrl = "assets/images/Jay.jpg",
-            isPremium = false,
-            qrData = "https://tuapp.com/user/higan",
-            achievements = listOf(
-                Achievement("1", "Skull Master", "https://example.com/skull.jpg", "Complete your first playlist"),
-                Achievement("2", "Flame Warrior", "https://example.com/flame.jpg", "Listen to 100 songs"),
-                Achievement("3", "Alien Hunter", "https://example.com/alien.jpg", "Share 10 playlists")
-            ),
-            friends = listOf(
-                Friend("1", "Green Ninja", "https://example.com/green-ninja.jpg", FriendStatus.ONLINE),
-                Friend("2", "Snow Warrior", "https://example.com/snow-warrior.jpg", FriendStatus.AWAY),
-                Friend("3", "Dark Knight", "https://example.com/dark-knight.jpg", FriendStatus.OFFLINE)
-            )
-        )
-    }
-
     val currentTrack = remember {
         Track(
-            title = "JEOPARDY",
-            artist = "Sawano Hiroyuki",
+            title = "Vengeance",
+            artist = "Coldrain",
             duration = "3:45",
             durationMs = 225000,
-            albumArt = "https://example.com/anime-album.jpg"
+            albumArt = "assets/images/Coldrain.jpg"
         )
     }
 
@@ -61,26 +46,26 @@ fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Color(0xFF010B19))
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 20.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(40.dp))
 
-        // Navbar con icono de configuración
-        NavbarComposable(
+        // Navbar
+        OrbitNavbar(
             username = "Jay Walker",
-            title = "Lightning Ninja",
-            subtitle = null,
-            showSettingsIcon = true,
-            onHomeClick = onNavigateToLibrary
+            title = "Ninja",
+            subtitle = "Profile",
+            profilePainter = null,
+            onNavigateToHome = onNavigateToHome
         )
 
         Spacer(modifier = Modifier.height(0.dp))
 
         // Backstage Card
-        BackstageCard(profile = userProfile)
+        BackstageCard()
 
         // Línea punteada
         DottedLine()
@@ -94,6 +79,7 @@ fun ProfileScreen(
                     Color(0xFF010B19),
                     RoundedCornerShape(10.dp)
                 )
+                .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(10.dp))
                 .padding(14.dp)
         ) {
             Column {
@@ -106,9 +92,9 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    userProfile.achievements.forEach { achievement ->
-                        AchievementCircle(achievement = achievement)
-                    }
+                    AchievementCircle(image = "assets/images/medal.jpg")
+                    AchievementCircle(image = "assets/images/medal2.jpg")
+                    AchievementCircle(image = "assets/images/medal3.jpg")
                     PlusIcon()
                 }
 
@@ -123,9 +109,9 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    userProfile.friends.forEach { friend ->
-                        FriendCircle(friend = friend)
-                    }
+                    FriendCircle(image = "assets/images/X.jpg", status = FriendStatus.ONLINE)
+                    FriendCircle(image = "assets/images/Lin ling.jpg", status = FriendStatus.AWAY)
+                    FriendCircle(image = "assets/images/E-soul.jpg", status = FriendStatus.OFFLINE)
                     PlusIcon()
                 }
 
@@ -147,155 +133,338 @@ fun ProfileScreen(
     }
 }
 
-// Navbar específico para Profile con icono de configuración
 @Composable
-fun NavbarComposable(
-    username: String,
-    title: String,
-    subtitle: String?,
-    showSettingsIcon: Boolean = false,
-    onHomeClick: () -> Unit = {}
-) {
+fun BackstageCard() {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp)
-            .background(Color(0xFF010B19))
+            .width(320.dp)
+            .height(380.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF9C27B0),
+                        Color(0xFF2196F3),
+                        Color(0xFF4CAF50),
+                        Color(0xFFFF9800)
+                    )
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(12.dp))
+            .padding(16.dp)
     ) {
-        // Barra de título superior con "Ninja"
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Campo "Ninja" como en la imagen
+            // Edit icon
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit",
+                    tint = Color(0xFF010B19),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Profile Picture
             Box(
                 modifier = Modifier
-                    .width(80.dp)
-                    .height(24.dp)
-                    .background(
-                        Color(0xFF2C2C2C),
-                        RoundedCornerShape(4.dp)
-                    )
-                    .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(4.dp)),
+                    .size(96.dp)
+                    .background(Color(0xFF2196F3), CircleShape)
+                    .border(2.5.dp, Color.White.copy(alpha = 0.25f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Ninja",
-                    color = Color(0xFFB4B1B8),
+                    text = "VR",
+                    color = Color.White,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Row {
-                // Círculos decorativos
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(Color(0xFFB4B1B8), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(Color(0xFFB4B1B8), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "o_x",
-                    color = Color(0xFFB4B1B8),
-                    fontSize = 12.sp
-                )
-            }
-        }
-
-        // Barra principal con navegación
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .align(Alignment.BottomCenter),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Botón Home + "Profile"
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Botón Home
-                IconButton(
-                    onClick = onHomeClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            Color(0xFF2C2C2C),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Home,
-                        contentDescription = "Home",
-                        tint = Color(0xFFE9E8EE),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                // Texto "Profile"
-                Text(
-                    text = "Profile",
-                    color = Color(0xFFE9E8EE),
-                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            // Botones de la derecha
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Botón Notificaciones
-                IconButton(
-                    onClick = { /* Notifications */ },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            Color(0xFF2C2C2C),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "Notifications",
-                        tint = Color(0xFFE9E8EE),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            Spacer(modifier = Modifier.height(12.dp))
 
-                // Botón Configuración
-                IconButton(
-                    onClick = { /* Settings */ },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            Color(0xFF2C2C2C),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = Color(0xFFE9E8EE),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            // Username
+            Text(
+                text = "Higan",
+                color = Color(0xFF010B19),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Title Badge
+            Box(
+                modifier = Modifier
+                    .background(Color(0xFF010B19), RoundedCornerShape(50.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(50.dp))
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "Hero X",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(5.dp))
+
+            // Bio
+            Text(
+                text = "From calm seas to wild storms — I have a track for it 🌊⚡",
+                color = Color(0xFF010B19),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // QR Code placeholder
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFF010B19), RoundedCornerShape(12.dp))
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "QR",
+                    color = Color.Black,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
 }
+
+@Composable
+fun DottedLine() {
+    Canvas(
+        modifier = Modifier
+            .width(320.dp)
+            .height(2.dp)
+    ) {
+        val color = Color(0xFFB4B1B8)
+        val strokeWidth = 2f
+        val dashWidth = 6f
+        val dashSpace = 4f
+        var startX = 0f
+        
+        while (startX < size.width) {
+            drawLine(
+                color = color,
+                start = Offset(startX, 0f),
+                end = Offset(startX + dashWidth, 0f),
+                strokeWidth = strokeWidth
+            )
+            startX += dashWidth + dashSpace
+        }
+    }
+}
+
+@Composable
+fun SectionTitle(title: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.54f))
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = title,
+            color = Color.White,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.54f))
+        )
+    }
+}
+
+@Composable
+fun AchievementCircle(image: String) {
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .background(Color.Transparent, CircleShape)
+            .border(2.dp, Color.White, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "🏆",
+            fontSize = 20.sp
+        )
+    }
+}
+
+@Composable
+fun FriendCircle(image: String, status: FriendStatus) {
+    val borderColor = when (status) {
+        FriendStatus.ONLINE -> Color(0xFF4CAF50)
+        FriendStatus.AWAY -> Color(0xFFFFC107)
+        FriendStatus.OFFLINE -> Color(0xFFF44336)
+    }
+    
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .background(Color.Transparent, CircleShape)
+            .border(2.dp, borderColor, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "👤",
+            fontSize = 20.sp
+        )
+    }
+}
+
+@Composable
+fun PlusIcon() {
+    Box(
+        modifier = Modifier
+            .size(60.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = "Add",
+            tint = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.size(60.dp)
+        )
+    }
+}
+
+enum class FriendStatus { ONLINE, AWAY, OFFLINE }
+
+@Composable
+fun MiniSongReproductor(
+    track: Track,
+    isPlaying: Boolean,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .width(400.dp)
+            .height(62.dp)
+            .background(
+                Color(0xFF010B19),
+                RoundedCornerShape(30.5.dp)
+            )
+            .border(1.dp, Color(0xFFB4B1B8), RoundedCornerShape(30.5.dp))
+            .padding(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Album Art
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .background(Color(0xFF2C2C2C), CircleShape)
+                .border(1.dp, Color(0xFFB4B1B8), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "🎵",
+                fontSize = 16.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        // Track Info
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 6.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = track.title,
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = track.artist,
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        // Controls
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+            IconButton(
+                onClick = onPrevious,
+                modifier = Modifier.size(22.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SkipPrevious,
+                    contentDescription = "Previous",
+                    tint = Color(0xFFE9E8EE),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            IconButton(
+                onClick = onPlayPause,
+                modifier = Modifier.size(26.dp)
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    tint = Color(0xFFE9E8EE),
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+
+            IconButton(
+                onClick = onNext,
+                modifier = Modifier.size(22.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SkipNext,
+                    contentDescription = "Next",
+                    tint = Color(0xFFE9E8EE),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.width(6.dp))
+    }
+}
+
