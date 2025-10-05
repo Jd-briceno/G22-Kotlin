@@ -210,12 +210,14 @@ class SpotifyService {
                 items?.forEach { item ->
                     val trackObj = item.asJsonObject
                     if (trackObj.get("id") != null) {
+                        println("🔍 Raw track data: ${trackObj}")
                         try {
                             val track = Track.fromSpotify(trackObj.asMap())
                             println("🎵 Track: ${track.title} by ${track.artist} - Image: ${track.albumArt}")
                             tracks.add(track)
                         } catch (e: Exception) {
                             println("❌ Error parsing track: ${e.message}")
+                            e.printStackTrace()
                             // Crear track manualmente si falla el parsing
                             val title = trackObj.get("name")?.asString ?: "Unknown"
                             val artists = trackObj.getAsJsonArray("artists")?.map { it.asJsonObject.get("name")?.asString ?: "" }?.joinToString(", ") ?: "Unknown"
