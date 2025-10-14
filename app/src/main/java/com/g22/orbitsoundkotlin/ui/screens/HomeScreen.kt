@@ -16,17 +16,29 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.annotation.DrawableRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.Home
@@ -36,9 +48,23 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,17 +88,16 @@ import androidx.compose.ui.unit.sp
 import com.g22.orbitsoundkotlin.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.random.Random
-import com.g22.orbitsoundkotlin.ui.screens.shared.OrbitSoundHeader
-import com.g22.orbitsoundkotlin.ui.screens.shared.StarField
-import com.g22.orbitsoundkotlin.ui.screens.shared.painterByNameOrNull
 import com.g22.orbitsoundkotlin.auth.AuthUser
+import com.g22.orbitsoundkotlin.ui.screens.shared.painterByNameOrNull
 
 
 // ───────────────────────────── Models / Service (stub) ─────────────────────────────
@@ -84,33 +109,110 @@ data class Weather(
 )
 
 object WeatherService {
-    // TODO
     suspend fun fetchWeather(lat: Double, lon: Double): Weather {
-        delay(400L)
-        val sample = listOf(
-            Weather(22.0, "Parcialmente nublado", "clouds"),
-            Weather(29.0, "Cielo despejado", "clear"),
-            Weather(19.0, "Lluvia ligera", "rain"),
-            Weather(24.0, "Tormenta eléctrica", "thunderstorm")
+        return runCatching { fetchFromApi(lat, lon) }
+            .getOrElse {
+                // Fallback to a deterministic sample set if the API fails.
+                val fallback = listOf(
+                    Weather(22.0, "Parcialmente nublado", "clouds"),
+                    Weather(26.0, "Cielo despejado", "clear"),
+                    Weather(18.0, "Lluvia ligera", "rain"),
+                    Weather(20.0, "Tormenta eléctrica aislada", "thunderstorm")
+                )
+                fallback.random()
+            }
+    }
+
+    private suspend fun fetchFromApi(lat: Double, lon: Double): Weather = withContext(Dispatchers.IO) {
+        val endpoint =
+            "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current_weather=true&timezone=auto&temperature_unit=celsius"
+        val connection = java.net.URL(endpoint).openConnection() as java.net.HttpURLConnection
+        try {
+            connection.connectTimeout = 4000
+            connection.readTimeout = 4000
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            parseWeatherResponse(response)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun parseWeatherResponse(raw: String): Weather {
+        val json = JSONObject(raw)
+        val current = json.getJSONObject("current_weather")
+        val temperature = current.getDouble("temperature")
+        val weatherCode = current.optInt("weathercode", -1)
+        val (description, condition) = mapWeatherCode(weatherCode)
+        return Weather(
+            temperatureC = temperature,
+            description = description,
+            condition = condition
         )
-        return sample.random()
+    }
+
+    private fun mapWeatherCode(code: Int): Pair<String, String> = when (code) {
+        0 -> "Cielo despejado" to "clear"
+        1, 2 -> "Parcialmente nublado" to "clouds"
+        3 -> "Nublado" to "clouds"
+        in 45..48 -> "Neblina" to "clouds"
+        in 51..57 -> "Llovizna" to "rain"
+        in 61..67 -> "Lluvia" to "rain"
+        in 71..77 -> "Nieve" to "snow"
+        in 80..82 -> "Aguacero" to "rain"
+        in 85..86 -> "Nieve intensa" to "snow"
+        in 95..99 -> "Tormenta eléctrica" to "thunderstorm"
+        else -> "Condición desconocida" to "clear"
+    }
+}
+
+sealed interface HomeEvent {
+    data class WeatherUpdated(val weather: Weather) : HomeEvent
+    data class LocationErrorChanged(val hasError: Boolean) : HomeEvent
+    data class StarColorsTransition(val previous: List<Color>, val current: List<Color>) : HomeEvent
+    data class LightningChanged(val isActive: Boolean) : HomeEvent
+}
+
+interface HomeObserver {
+    fun onHomeEvent(event: HomeEvent)
+}
+
+class HomeEventPublisher {
+    private val observers = mutableSetOf<HomeObserver>()
+
+    fun subscribe(observer: HomeObserver) {
+        observers.add(observer)
+    }
+
+    fun unsubscribe(observer: HomeObserver) {
+        observers.remove(observer)
+    }
+
+    fun notify(event: HomeEvent) {
+        observers.forEach { it.onHomeEvent(event) }
     }
 }
 
 class HomeViewModel : ViewModel() {
-    private val _weather = MutableStateFlow<Weather?>(null)
-    val weather = _weather.asStateFlow()
+    private val publisher = HomeEventPublisher()
 
-    private val _locationError = MutableStateFlow(false)
-    val locationError = _locationError.asStateFlow()
+    private var latestWeather: Weather? = null
+    private var locationError = false
+    private var previousColors = listOf(Color.White)
+    private var currentColors = listOf(Color.White)
+    private var isLightningActive = false
 
-    private val _previousColors = MutableStateFlow(listOf(Color.White))
-    private val _currentColors = MutableStateFlow(listOf(Color.White))
-    val previousColors = _previousColors.asStateFlow()
-    val currentColors = _currentColors.asStateFlow()
+    fun registerObserver(observer: HomeObserver) {
+        publisher.subscribe(observer)
+        // Emit snapshot so UI starts with current state.
+        latestWeather?.let { observer.onHomeEvent(HomeEvent.WeatherUpdated(it)) }
+        observer.onHomeEvent(HomeEvent.LocationErrorChanged(locationError))
+        observer.onHomeEvent(HomeEvent.StarColorsTransition(previousColors, currentColors))
+        observer.onHomeEvent(HomeEvent.LightningChanged(isLightningActive))
+    }
 
-    private val _triggerLightning = MutableStateFlow(false)
-    val triggerLightning = _triggerLightning.asStateFlow()
+    fun unregisterObserver(observer: HomeObserver) {
+        publisher.unsubscribe(observer)
+    }
 
     fun loadWeather(context: Context) {
         viewModelScope.launch {
@@ -120,30 +222,53 @@ class HomeViewModel : ViewModel() {
                     lat = loc?.latitude ?: 4.60971,   // Bogotá fallback
                     lon = loc?.longitude ?: -74.08175
                 )
-                _weather.value = w
-                _locationError.value = false
+                latestWeather = w
+                locationError = false
+                publisher.notify(HomeEvent.WeatherUpdated(w))
+                publisher.notify(HomeEvent.LocationErrorChanged(locationError))
                 updateStarColors(w)
                 if (w.condition.lowercase().contains("thunderstorm")) {
-                    delay(250)
-                    _triggerLightning.value = true
-                    delay(900)
-                    _triggerLightning.value = false
+                    triggerLightningOnce()
+                } else {
+                    ensureLightningOff()
                 }
             } catch (_: Exception) {
-                _locationError.value = true
+                locationError = true
+                publisher.notify(HomeEvent.LocationErrorChanged(locationError))
             }
         }
     }
 
     private fun updateStarColors(w: Weather) {
-        _previousColors.value = _currentColors.value
-        _currentColors.value = when (w.condition.lowercase()) {
+        val newColors = when (w.condition.lowercase()) {
             "clear" -> listOf(Color(0xFFFFE082), Color(0xFFFFF8E1), Color(0xFFFFECB3))
             "clouds" -> listOf(Color(0xFFB0BEC5), Color(0xFFCFD8DC), Color(0xFF90A4AE))
             "rain" -> listOf(Color(0xFF90CAF9), Color(0xFF64B5F6), Color(0xFFBBDEFB))
             "thunderstorm" -> listOf(Color(0xFFB3E5FC), Color(0xFFE1F5FE), Color(0xFF81D4FA))
             else -> listOf(Color.White)
         }
+        previousColors = currentColors
+        currentColors = newColors
+        publisher.notify(HomeEvent.StarColorsTransition(previousColors, currentColors))
+    }
+
+    private suspend fun triggerLightningOnce() {
+        delay(250)
+        setLightningState(true)
+        delay(900)
+        setLightningState(false)
+    }
+
+    private fun ensureLightningOff() {
+        if (isLightningActive) {
+            setLightningState(false)
+        }
+    }
+
+    private fun setLightningState(active: Boolean) {
+        if (isLightningActive == active) return
+        isLightningActive = active
+        publisher.notify(HomeEvent.LightningChanged(isLightningActive))
     }
 }
 
@@ -171,11 +296,12 @@ private fun RememberLocationPermissionRequester(onGranted: () -> Unit) {
 // ───────────────────────────── HomeScreen (UI) ─────────────────────────────
 
 @Composable
-fun HomeScreen(    modifier: Modifier = Modifier,
-                   user: AuthUser,
-                   onNavigateToStellarEmotions: () -> Unit,
-                   onNavigateToLibrary: () -> Unit = {},
-                   onNavigateToProfile: () -> Unit = {}
+fun HomeScreen(
+    modifier: Modifier = Modifier,
+    user: AuthUser,
+    onNavigateToStellarEmotions: () -> Unit,
+    onNavigateToLibrary: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val vm = remember { HomeViewModel() }
     val context = LocalContext.current
@@ -190,11 +316,11 @@ fun HomeScreen(    modifier: Modifier = Modifier,
         )
     )
 
-    val weather by vm.weather.collectAsState()
-    val locationError by vm.locationError.collectAsState()
-    val prevColors by vm.previousColors.collectAsState()
-    val currColors by vm.currentColors.collectAsState()
-    val triggerLightning by vm.triggerLightning.collectAsState()
+    val weatherState = remember { mutableStateOf<Weather?>(null) }
+    val locationErrorState = remember { mutableStateOf(false) }
+    val previousColorsState = remember { mutableStateOf(listOf(Color.White)) }
+    val currentColorsState = remember { mutableStateOf(listOf(Color.White)) }
+    val lightningState = remember { mutableStateOf(false) }
 
     var colorPhaseTarget by remember { mutableStateOf(1f) }
     val colorPhase by animateFloatAsState(
@@ -203,9 +329,30 @@ fun HomeScreen(    modifier: Modifier = Modifier,
         label = "colorPhase"
     )
 
+    val observer = remember {
+        object : HomeObserver {
+            override fun onHomeEvent(event: HomeEvent) {
+                when (event) {
+                    is HomeEvent.WeatherUpdated -> weatherState.value = event.weather
+                    is HomeEvent.LocationErrorChanged -> locationErrorState.value = event.hasError
+                    is HomeEvent.StarColorsTransition -> {
+                        previousColorsState.value = event.previous
+                        currentColorsState.value = event.current
+                        colorPhaseTarget = 0f
+                    }
+                    is HomeEvent.LightningChanged -> lightningState.value = event.isActive
+                }
+            }
+        }
+    }
+
+    DisposableEffect(vm) {
+        vm.registerObserver(observer)
+        onDispose { vm.unregisterObserver(observer) }
+    }
+
     LaunchedEffect(Unit) {
         vm.loadWeather(context)
-        snapshotFlow { weather }.collect { if (it != null) colorPhaseTarget = 0f }
     }
     LaunchedEffect(colorPhase) {
         if (colorPhase == 0f) colorPhaseTarget = 1f
@@ -214,7 +361,7 @@ fun HomeScreen(    modifier: Modifier = Modifier,
     RememberLocationPermissionRequester { vm.loadWeather(context) }
 
     val lightningProgress by animateFloatAsState(
-        targetValue = if (triggerLightning) 1f else 0f,
+        targetValue = if (lightningState.value) 1f else 0f,
         animationSpec = tween(800, easing = LinearEasing),
         label = "lightning"
     )
@@ -228,7 +375,7 @@ fun HomeScreen(    modifier: Modifier = Modifier,
             .background(Color(0xFF010B19))
     ) {
         // Estrellas
-        val starColors = rememberInterpolatedColors(prevColors, currColors, colorPhase)
+        val starColors = rememberInterpolatedColors(previousColorsState.value, currentColorsState.value, colorPhase)
         StarField(
             modifier = Modifier.fillMaxSize(),
             globalTime = time * (2f * PI.toFloat()),
@@ -258,6 +405,28 @@ fun HomeScreen(    modifier: Modifier = Modifier,
 
 
             Spacer(Modifier.height(24.dp))
+
+            if (locationErrorState.value) {
+                Text(
+                    text = "Ubicación no disponible: usando condiciones estelares por defecto.",
+                    color = Color(0xFFFFCDD2),
+                    style = MaterialTheme.typography.labelSmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+
+            weatherState.value?.let { weather ->
+                Text(
+                    text = "${weather.description} • ${"%.1f".format(weather.temperatureC)} °C",
+                    color = Color(0xFFE0E0E0),
+                    style = MaterialTheme.typography.labelSmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+            }
 
             Box(
                 modifier = Modifier
