@@ -45,11 +45,12 @@ import com.g22.orbitsoundkotlin.models.EmotionModel
 import com.g22.orbitsoundkotlin.models.EmotionControlState
 import com.g22.orbitsoundkotlin.models.SliderEmotionControlState
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.roundToInt
 import com.g22.orbitsoundkotlin.R
-import androidx.lifecycle.viewmodel.compose.viewModel
 
 private val containerBorderColor = Color.White.copy(alpha = 0.4f)
 private val containerShape = RoundedCornerShape(16.dp)
@@ -192,19 +193,24 @@ fun getEmotionFromSliderValue(
 fun StellarEmotionsScreen(
     username: String,
     onNavigateToConstellations: () -> Unit,
-    //viewModel: StellarEmotionsViewModel = viewModel(),
+    viewModel: StellarEmotionsViewModel = viewModel(),
 ) {
     val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
 
-//    LaunchedEffect(key1 = Unit) {
-//        viewModel.event.collect { event ->
-//            when (event) {
-//                is StellarEmotionsViewModel.Event.ShowError -> {
-//                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
-//                }
-//            }
-//        }
-//    }
+    LaunchedEffect(key1 = Unit) {
+        viewModel.event.collect { event ->
+            when (event) {
+                is StellarEmotionsViewModel.Event.ShowError -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                }
+                is StellarEmotionsViewModel.Event.NavigateNext -> {
+                    // Navigate when the ViewModel tells us to
+                    onNavigateToConstellations()
+                }
+            }
+        }
+    }
     var selectedEmotions by remember {
         mutableStateOf(listOf<EmotionModel>())
     }
@@ -404,9 +410,11 @@ fun StellarEmotionsScreen(
             Button(
                 onClick = {
 
-                    //viewModel.onReadyToShipClicked(selectedEmotions)
+                    viewModel.onReadyToShipClicked(selectedEmotions)
 
-                    onNavigateToConstellations()
+                    if (uiState is StellarEmotionsViewModel.UiState.Success) {
+                        onNavigateToConstellations()
+                    }
                 },
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -417,7 +425,15 @@ fun StellarEmotionsScreen(
                     containerColor = Color.Transparent
                 )
             ) {
-                Text(text = "Ready to ship?", color = Color.White)
+                when (uiState) {
+                    StellarEmotionsViewModel.UiState.Loading -> {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    else -> Text(text = "Ready to ship?", color = Color.White)
+                }
             }
         }
     }
@@ -621,7 +637,6 @@ fun ColumnScope.VolumeSlider(
                     value = sliderPosition,
                     onValueChange = onValueChange,
                     modifier = Modifier
-                        // REMOVED .width(300.dp)
                         .fillMaxWidth()
                         .rotate(-90f),
                     colors = SliderDefaults.colors(

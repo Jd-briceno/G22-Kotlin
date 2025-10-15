@@ -1,5 +1,6 @@
 package com.g22.orbitsoundkotlin
 
+import StellarEmotionsViewModel
 import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -338,10 +339,10 @@ private fun OrbitSoundApp() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues) // Apply padding here
+                        .padding(paddingValues)
                 ) {
                     HomeScreen(
-                        modifier = Modifier.fillMaxSize(), // Do NOT apply padding here
+                        modifier = Modifier.fillMaxSize(),
                         user = current.user,
                         onNavigateToStellarEmotions = {
                             destination = AppDestination.StellarEmotions(current.user)
@@ -358,11 +359,15 @@ private fun OrbitSoundApp() {
                 }
             }
             is AppDestination.StellarEmotions -> {
+                val viewModel = remember {
+                    StellarEmotionsViewModel(userId = current.user.id)
+                }
                 StellarEmotionsScreen(
                     username = current.user.email?.split("@")?.firstOrNull() ?: "Captain",
                     onNavigateToConstellations = {
                         destination = AppDestination.Constellations(current.user)
-                    }
+                    },
+                    viewModel = viewModel
                 )
             }
             is AppDestination.Constellations -> {
