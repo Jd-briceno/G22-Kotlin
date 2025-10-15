@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.example.stellar.ui.StellarEmotionsScreen
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -41,10 +42,11 @@ import com.g22.orbitsoundkotlin.ui.screens.LibraryScreen
 import com.g22.orbitsoundkotlin.ui.screens.LoginScreen
 import com.g22.orbitsoundkotlin.ui.screens.ProfileScreen
 import com.g22.orbitsoundkotlin.ui.screens.SignupScreen
-import com.g22.orbitsoundkotlin.ui.screens.StellarEmotionsScreen
 import com.g22.orbitsoundkotlin.ui.screens.ConstellationsScreen
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,14 +54,14 @@ class MainActivity : ComponentActivity() {
         FirebaseApp.initializeApp(this)
         setContent {
             OrbitSoundKotlinTheme {
-                OrbitSoundApp()
+                OrbitSoundContent()
             }
         }
     }
 }
 
 @Composable
-private fun OrbitSoundApp() {
+private fun OrbitSoundContent() {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val authService = remember { AuthService() }

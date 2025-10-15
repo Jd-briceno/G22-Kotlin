@@ -5,12 +5,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
 data class EmotionModel(
-    val id: String,
     val name: String,
-    val description: String,
-    val color: Color,
-    val iconRes: Int,
-    val source: String
+    val id: String = "",
+    val description: String = "",
+    val color: Color = Color.Transparent,
+    val iconRes: Int = 0,
+    val source: String = ""
 )
 
 data class EmotionControlState(

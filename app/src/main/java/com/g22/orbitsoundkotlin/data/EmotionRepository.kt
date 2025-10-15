@@ -1,4 +1,7 @@
+package com.g22.orbitsoundkotlin.data
+
+import com.g22.orbitsoundkotlin.models.EmotionLog
+
 interface EmotionRepository {
-    // Suspend function for coroutine-friendly asynchronous operation
-    suspend fun saveEmotionData(submission: EmotionSubmission): Result<Unit>
+    suspend fun logEmotions(emotionLog: EmotionLog): Result<Unit>
 }

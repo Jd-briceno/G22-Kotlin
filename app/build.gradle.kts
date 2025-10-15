@@ -45,64 +45,64 @@ android {
         compose = true
         buildConfig = true
     }
+    kapt {
+        correctErrorTypes = true
+        arguments {
+            arg("dagger.hilt.verboseLogging", "true")
+        }
+    }
 }
 
 dependencies {
 
+    // Core and Compose Dependencies (using the BOM)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-
-    // 🔥 Use the Compose BOM platform from your version catalog
-    implementation(platform(libs.androidx.compose.bom))
-
-    // ✅ Now, implement Compose libraries WITHOUT specifying versions
+    implementation(platform(libs.androidx.compose.bom)) // BOM handles versions for other Compose libs
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation("androidx.compose.foundation:foundation-layout") // No version needed
-    implementation("androidx.compose.material:material-icons-core") // No version needed
-    implementation("androidx.compose.material:material-icons-extended") // No version needed
+    implementation("androidx.compose.foundation:foundation-layout") // No version needed due to BOM
+    implementation("androidx.compose.material:material-icons-core") // No version needed due to BOM
+    implementation("androidx.compose.material:material-icons-extended") // No version needed due to BOM
 
+    // ViewModel and Navigation for Compose
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2") // Keep this specific version
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0") // Keep this specific version
 
-    implementation("androidx.compose.foundation:foundation-layout")
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
-    implementation("androidx.compose.material:material-icons-core")
-    implementation("androidx.compose.material:material-icons-extended")
-    // Other dependencies (look fine)
+    // Hilt Dependencies
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    kapt("com.google.dagger:hilt-android-compiler:2.51.1")
+    implementation("javax.inject:javax.inject:1") // For the @Inject annotation
+
+    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    implementation("com.google.code.gson:gson:2.10.1")
+
+    // Other utilities
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("com.google.code.gson:gson:2.10.1")
 
-    // 🔥 Firebase con BOM
+    // Firebase with BOM
     implementation(platform(libs.firebase.bom))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-analytics")
 
-    // Play Services y coroutines extra
+    // Play Services for Auth
     implementation(libs.play.services.auth)
     implementation(libs.kotlinx.coroutines.play.services)
 
-    // Test dependencies
+    // Test Dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom)) // BOM for tests too
+    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-
-    implementation("com.google.dagger:hilt-android:2.51.1")
-    kapt("com.google.dagger:hilt-android-compiler:2.51.1")
-
-    // This provides the @Inject annotation
-    implementation("javax.inject:javax.inject:1")
 }
 
 fun getSpotifyClientId(): String {

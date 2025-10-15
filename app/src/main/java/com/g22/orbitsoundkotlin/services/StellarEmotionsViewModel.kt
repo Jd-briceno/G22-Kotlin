@@ -1,53 +1,66 @@
-// Presentation/StellarEmotionsViewModel.kt
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.g22.orbitsoundkotlin.auth.AuthService
+import com.g22.orbitsoundkotlin.data.EmotionRepository
+import com.g22.orbitsoundkotlin.models.EmotionLog
 import com.g22.orbitsoundkotlin.models.EmotionModel
+import com.g22.orbitsoundkotlin.models.StellarEmotionsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// Use @HiltViewModel if you are using Hilt for dependency injection
 @HiltViewModel
 class StellarEmotionsViewModel @Inject constructor(
     private val repository: EmotionRepository,
-//    private val userSessionManager: UserSessionManager
-) : ViewModel() {
 
-    // Still use a sealed class for one-time UI events (like showing a Toast/Snackbar)
-    sealed class Event {
-        data class ShowError(val message: String) : Event()
-        // Removed ShipComplete event, as navigation is now handled in the Composable
+    ) : ViewModel() {
+    private val _uiState = MutableStateFlow(StellarEmotionsUiState())
+    val uiState: StateFlow<StellarEmotionsUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<UiEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
+    fun updateSelectedEmotions(emotions: List<EmotionModel>) {
+        _uiState.update { it.copy(selectedEmotions = emotions) }
     }
 
-    private val _event = MutableSharedFlow<Event>()
-    val event = _event.asSharedFlow()
+    fun submitEmotions() {
+        val emotions = _uiState.value.selectedEmotions.map { it.id } // store ids
+        val log = EmotionLog(
+            emotions = emotions,
+            clientTs = System.currentTimeMillis()
+        )
 
-    fun onReadyToShipClicked(emotionsData: List<EmotionModel>) {
-        viewModelScope.launch { // Launch a coroutine for the background save
-            // The UI will continue execution and navigate immediately after this line.
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
 
-//            val userEmail = userSessionManager.getUserEmail() ?: run {
-//                _event.emit(Event.ShowError("User email not found. Submission aborted."))
-//                return@launch
-//            }
+            val result = repository.logEmotions(log)
 
-            val submission = EmotionSubmission(
-//                userEmail = userEmail,
-                emotions = emotionsData
+            _uiState.update { it.copy(isLoading = false) }
+            result.fold(
+                onSuccess = {
+                    _events.send(UiEvent.Success("Emotions logged"))
+                    _uiState.update { it.copy(lastSubmittedAt = System.currentTimeMillis()) }
+                },
+                onFailure = { e ->
+                    _events.send(UiEvent.ShowError(e.localizedMessage ?: "Failed to log emotions"))
+                }
             )
-
-            // Execute save operation and handle result using onSuccess/onFailure
-            repository.saveEmotionData(submission)
-                .onSuccess {
-                    // Optional: Log success, but do NOT trigger navigation
-                    println("Emotion data saved successfully to Firebase!")
-                }
-                .onFailure { exception ->
-                    // Only emit an error event, not a navigation event
-                    _event.emit(Event.ShowError("Submission failed: ${exception.message}"))
-                }
         }
+    }
+
+    sealed class UiEvent {
+        data class ShowError(val message: String): UiEvent()
+        data class Success(val message: String): UiEvent()
+        object NavigateToConstellations: UiEvent()
     }
 }
