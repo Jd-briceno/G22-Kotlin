@@ -248,13 +248,17 @@ fun StellarEmotionsScreen(
         )
     }
 
-    val updateSelectedEmotionsAndLast: (EmotionModel) -> Unit = { newEmotion ->
+    val updateSelectedEmotionsAndLast: (EmotionModel, Boolean) -> Unit = { newEmotion, hasInteracted ->
         selectedEmotions = selectedEmotions.toMutableList().apply {
             val existingIndex = indexOfFirst { it.source == newEmotion.source }
 
             if (existingIndex != -1) {
-                this[existingIndex] = newEmotion
-            } else {
+                if (hasInteracted) {
+                    this[existingIndex] = newEmotion
+                } else {
+                    removeAt(existingIndex) // Remove if user hasn't interacted
+                }
+            } else if (hasInteracted) {
                 add(newEmotion)
             }
         }
@@ -262,28 +266,12 @@ fun StellarEmotionsScreen(
         lastSelectedEmotion = newEmotion
     }
 
+    var hasInteractedWithKnob1 by remember { mutableStateOf(false) }
+    var hasInteractedWithKnob2 by remember { mutableStateOf(false) }
+    var hasInteractedWithSlider by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
-        val initialEmotions = mutableListOf<EmotionModel>()
-        val initialKnob1Emotion = anxietyKnobEmotions["Anxiety"]!!
-        val initialKnob2Emotion = anxietyKnobEmotions["Embarrassment"]!!
-        val initialSliderEmotion = anxietyKnobEmotions["Joy"]!!
-
-        if (selectedEmotions.none { it.source == initialKnob1Emotion.source }) {
-            initialEmotions.add(initialKnob1Emotion)
-        }
-        if (selectedEmotions.none { it.source == initialKnob2Emotion.source }) {
-            initialEmotions.add(initialKnob2Emotion)
-        }
-        if (selectedEmotions.none { it.source == initialSliderEmotion.source }) {
-            initialEmotions.add(initialSliderEmotion)
-        }
-
-        selectedEmotions = selectedEmotions + initialEmotions
-
-
-        if (lastSelectedEmotion == null && initialEmotions.isNotEmpty()) {
-            lastSelectedEmotion = initialEmotions.last()
-        }
+        selectedEmotions = emptyList()
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "star_field_transition")
@@ -357,9 +345,10 @@ fun StellarEmotionsScreen(
                         labelBottom = "Anger",
                         labelLeft = "Disgust",
                         labelRight = "Envy",
-                        knobColor = knob1State.selectedEmotion.color,
+                        knobColor = if (hasInteractedWithKnob1) knob1State.selectedEmotion.color else knob1State.selectedEmotion.color.copy(alpha = 0.5f),
                         initialAngle = knob1State.angle,
                         onAngleChange = { newAngle ->
+                            hasInteractedWithKnob1 = true
                             val newEmotion = getEmotionFromKnobAngle(
                                 angle = newAngle,
                                 emotionLabels = listOf("Anxiety", "Disgust", "Anger", "Envy")
@@ -368,7 +357,7 @@ fun StellarEmotionsScreen(
                                 selectedEmotion = newEmotion,
                                 angle = newAngle
                             )
-                            updateSelectedEmotionsAndLast(newEmotion)
+                            updateSelectedEmotionsAndLast(newEmotion, hasInteractedWithKnob1)
                         }
                     )
 
@@ -376,15 +365,16 @@ fun StellarEmotionsScreen(
                         labelTop = "Embarrassment",
                         labelBottom = "Love",
                         labelLeft = "Boredom",
-                        knobColor = knob2State.selectedEmotion.color,
+                        knobColor = if (hasInteractedWithKnob2) knob2State.selectedEmotion.color else knob2State.selectedEmotion.color.copy(alpha = 0.5f),
                         initialAngle = knob2State.angle,
                         onAngleChange = { newAngle ->
+                            hasInteractedWithKnob2 = true
                             val newEmotion = getEmotionFromKnob2Angle(newAngle)
                             knob2State = knob2State.copy(
                                 selectedEmotion = newEmotion,
                                 angle = newAngle
                             )
-                            updateSelectedEmotionsAndLast(newEmotion)
+                            updateSelectedEmotionsAndLast(newEmotion, hasInteractedWithKnob2)
                         }
                     )
                 }
@@ -395,13 +385,14 @@ fun StellarEmotionsScreen(
                         sliderPosition = sliderState.value,
                         selectedEmotion = sliderState.selectedEmotion,
                         onValueChange = { newValue ->
+                            hasInteractedWithSlider = true
                             val newEmotion = getEmotionFromSliderValue(newValue)
                             sliderState = sliderState.copy(
                                 selectedEmotion = newEmotion,
                                 value = newValue
                             )
 
-                            updateSelectedEmotionsAndLast(newEmotion)
+                            updateSelectedEmotionsAndLast(newEmotion, hasInteractedWithSlider)
                         }
                     )
                 }
