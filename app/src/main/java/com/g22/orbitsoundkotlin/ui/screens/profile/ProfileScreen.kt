@@ -1,4 +1,4 @@
-package com.g22.orbitsoundkotlin.ui.screens
+package com.g22.orbitsoundkotlin.ui.screens.profile
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -14,34 +14,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.g22.orbitsoundkotlin.models.Track
+import com.g22.orbitsoundkotlin.ui.screens.OrbitNavbar
 
 @Composable
 fun ProfileScreen(
-    onNavigateToHome: () -> Unit = {}
+    onNavigateToHome: () -> Unit = {},
+    viewModel: ProfileViewModel = viewModel()
 ) {
-    val currentTrack = remember {
-        Track(
-            title = "Vengeance",
-            artist = "Coldrain",
-            duration = "3:45",
-            durationMs = 225000,
-            albumArt = "assets/images/Coldrain.jpg"
-        )
-    }
-
-    var isPlaying by remember { mutableStateOf(true) }
+    val uiState by viewModel.uiState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -65,7 +55,11 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(0.dp))
 
         // Backstage Card
-        BackstageCard()
+        BackstageCard(
+            username = uiState.username,
+            title = uiState.title,
+            bio = uiState.bio
+        )
 
         // Línea punteada
         DottedLine()
@@ -122,11 +116,11 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 MiniSongReproductor(
-                    track = currentTrack,
-                    isPlaying = isPlaying,
-                    onPlayPause = { isPlaying = !isPlaying },
-                    onNext = { /* Lógica para siguiente canción */ },
-                    onPrevious = { /* Lógica para canción anterior */ }
+                    track = uiState.currentTrack,
+                    isPlaying = uiState.isPlaying,
+                    onPlayPause = viewModel::togglePlayPause,
+                    onNext = viewModel::playNextTrack,
+                    onPrevious = viewModel::playPreviousTrack
                 )
             }
         }
@@ -134,7 +128,11 @@ fun ProfileScreen(
 }
 
 @Composable
-fun BackstageCard() {
+fun BackstageCard(
+    username: String,
+    title: String,
+    bio: String
+) {
     Box(
         modifier = Modifier
             .width(320.dp)
@@ -192,7 +190,7 @@ fun BackstageCard() {
 
             // Username
             Text(
-                text = "Higan",
+                text = username,
                 color = Color(0xFF010B19),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
@@ -209,7 +207,7 @@ fun BackstageCard() {
                     .padding(horizontal = 20.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "Hero X",
+                    text = title,
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
@@ -220,7 +218,7 @@ fun BackstageCard() {
 
             // Bio
             Text(
-                text = "From calm seas to wild storms — I have a track for it 🌊⚡",
+                text = bio,
                 color = Color(0xFF010B19),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,

@@ -4,6 +4,7 @@ import android.util.Base64
 import com.g22.orbitsoundkotlin.BuildConfig
 import com.g22.orbitsoundkotlin.models.Track
 import com.g22.orbitsoundkotlin.models.Playlist
+import com.g22.orbitsoundkotlin.data.mappers.SpotifyTrackMapper
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
@@ -12,10 +13,21 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Random
 
-class SpotifyService {
+/**
+ * Servicio para interactuar con la API de Spotify.
+ * Implementa el patrón Singleton para reutilizar instancia y caché de tokens.
+ */
+class SpotifyService private constructor() {
     private val clientId = BuildConfig.SPOTIFY_CLIENT_ID
     private val clientSecret = BuildConfig.SPOTIFY_CLIENT_SECRET
     private val gson = Gson()
+    private val trackMapper = SpotifyTrackMapper()
+    
+    // Caché de token para evitar solicitudes innecesarias
+    @Volatile
+    private var cachedToken: String? = null
+    @Volatile
+    private var tokenExpiry: Long = 0
 
     private val markets = listOf(
         "US", "GB", "DE", "JP", "KR", "MX", "BR", "FR", "ES", "IT",
@@ -30,7 +42,17 @@ class SpotifyService {
         "anisong" to listOf("Anisong", "Anime", "Demon Slayer")
     )
 
+    /**
+     * Obtiene el access token de Spotify.
+     * Reutiliza el token en caché si aún es válido (patrón Singleton).
+     */
     suspend fun getAccessToken(): String? = withContext(Dispatchers.IO) {
+        // Reutilizar token en caché si aún es válido
+        val currentTime = System.currentTimeMillis()
+        if (cachedToken != null && currentTime < tokenExpiry) {
+            return@withContext cachedToken
+        }
+        
         try {
             val credentials = Base64.encodeToString(
                 "$clientId:$clientSecret".toByteArray(),
@@ -53,7 +75,13 @@ class SpotifyService {
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
                 val jsonResponse = gson.fromJson(response, JsonObject::class.java)
-                jsonResponse.get("access_token")?.asString
+                val token = jsonResponse.get("access_token")?.asString
+                
+                // Cachear el token (Spotify tokens duran 1 hora)
+                cachedToken = token
+                tokenExpiry = currentTime + 3600000 // 1 hora
+                
+                token
             } else {
                 null
             }
@@ -135,7 +163,7 @@ class SpotifyService {
                 items?.forEach { item ->
                     val trackObj = item.asJsonObject.getAsJsonObject("track")
                     if (trackObj != null && trackObj.get("id") != null) {
-                        val track = Track.fromSpotify(trackObj.asMap())
+                        val track = trackMapper.map(trackObj.asMap())
                         if (track.title.isNotEmpty()) {
                             tracks.add(track)
                         }
@@ -179,17 +207,7 @@ class SpotifyService {
                 items?.forEach { item ->
                     val trackObj = item.asJsonObject
                     if (trackObj.get("id") != null) {
-                        val title = trackObj.get("name")?.asString ?: "Unknown"
-                        val artists = trackObj.getAsJsonArray("artists")?.map { it.asJsonObject.get("name")?.asString ?: "" }?.joinToString(", ") ?: "Unknown"
-                        val durationMs = trackObj.get("duration_ms")?.asInt ?: 0
-                        val minutes = durationMs / 60000
-                        val seconds = (durationMs % 60000) / 1000
-                        val duration = String.format("%d:%02d", minutes, seconds)
-                        val album = trackObj.getAsJsonObject("album")
-                        val images = album?.getAsJsonArray("images")
-                        val albumArt = images?.get(0)?.asJsonObject?.get("url")?.asString ?: ""
-
-                        val track = Track(title, artists, duration, durationMs, albumArt)
+                        val track = trackMapper.map(trackObj.asMap())
                         tracks.add(track)
                     }
                 }
@@ -302,6 +320,21 @@ class SpotifyService {
         }
 
         playlists
+    }
+    
+    companion object {
+        @Volatile
+        private var instance: SpotifyService? = null
+        
+        /**
+         * Obtiene la instancia única de SpotifyService (Singleton).
+         * Thread-safe usando double-checked locking.
+         */
+        fun getInstance(): SpotifyService {
+            return instance ?: synchronized(this) {
+                instance ?: SpotifyService().also { instance = it }
+            }
+        }
     }
 }
 

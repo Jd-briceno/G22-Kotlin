@@ -38,9 +38,9 @@ import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
 import com.g22.orbitsoundkotlin.data.userPreferencesStore
 import com.g22.orbitsoundkotlin.ui.screens.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
-import com.g22.orbitsoundkotlin.ui.screens.LibraryScreen
+import com.g22.orbitsoundkotlin.ui.screens.library.LibraryScreen
 import com.g22.orbitsoundkotlin.ui.screens.LoginScreen
-import com.g22.orbitsoundkotlin.ui.screens.ProfileScreen
+import com.g22.orbitsoundkotlin.ui.screens.profile.ProfileScreen
 import com.g22.orbitsoundkotlin.ui.screens.SignupScreen
 import com.g22.orbitsoundkotlin.ui.screens.StellarEmotionsScreen
 import com.g22.orbitsoundkotlin.ui.screens.ConstellationsScreen
