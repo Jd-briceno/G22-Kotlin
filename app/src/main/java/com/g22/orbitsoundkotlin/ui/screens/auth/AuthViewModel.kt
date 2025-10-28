@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.services.AuthResult
 import com.g22.orbitsoundkotlin.services.AuthService
+import com.g22.orbitsoundkotlin.services.IAuthService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,7 +12,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
-    private val service: AuthService = AuthService()
+    // Usa la abstracción y por defecto inyecta el Singleton explícito (GoF)
+    private val service: IAuthService = AuthService.getInstance()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -99,7 +101,6 @@ class AuthViewModel(
                         )
                     }
                 }
-
                 is AuthResult.Error -> {
                     _uiState.update {
                         it.copy(
@@ -159,7 +160,6 @@ class AuthViewModel(
                         )
                     }
                 }
-
                 is AuthResult.Error -> {
                     _uiState.update {
                         it.copy(
@@ -183,19 +183,11 @@ class AuthViewModel(
     fun latestAuthResult(): AuthResult.Success? = lastAuthResult
 
     private fun validateEmail(value: String): String? {
-        return if (EMAIL_REGEX.matches(value)) {
-            null
-        } else {
-            "Enter a valid email address."
-        }
+        return if (EMAIL_REGEX.matches(value)) null else "Enter a valid email address."
     }
 
     private fun validatePassword(value: String): String? {
-        return if (PASSWORD_REGEX.matches(value)) {
-            null
-        } else {
-            "Password must be 8+ chars with letters and numbers."
-        }
+        return if (PASSWORD_REGEX.matches(value)) null else "Password must be 8+ chars with letters and numbers."
     }
 
     data class AuthUiState(

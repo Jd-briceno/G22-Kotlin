@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
 private fun OrbitSoundApp() {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-    val authService = remember { AuthService() }
+    val authService = remember { AuthService.getInstance() }
     val context = LocalContext.current
     val userPreferencesRepository = remember { UserPreferencesRepository(context.userPreferencesStore) }
     val rememberSettings by userPreferencesRepository.rememberSettings.collectAsState(initial = RememberSettings())
