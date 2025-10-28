@@ -660,39 +660,58 @@ private fun RowScope.ShortcutTile(
 fun StarField(
     modifier: Modifier,
     globalTime: Float,
-    starColors: List<Color>
+    starColors: List<Color> // ya viene interpolado desde HomeScreen
 ) {
-    data class Star(val pos: Offset, val size: Float, val phase: Float, val speed: Float, val colorIndex: Int)
+    // Generamos “tipos” de estrella con tamaños más contrastados
+    data class Star(val pos: Offset, val base: Float, val phase: Float, val speed: Float, val colorIndex: Int)
 
     val stars = remember {
-        val rnd = Random(42)
-        List(140) {
+        val rnd = kotlin.random.Random(1337)
+        List(180) {
             Star(
                 pos = Offset(rnd.nextFloat(), rnd.nextFloat()),
-                size = (1f + rnd.nextFloat() * 2f),
-                phase = rnd.nextFloat() * (2f * PI.toFloat()),
-                speed = 0.5f + rnd.nextFloat() * 1.5f,
-                colorIndex = rnd.nextInt(0, 3)
+                base = when (rnd.nextInt(0, 10)) {
+                    in 0..5 -> 1.4f     // pequeñas
+                    in 6..8 -> 2.3f     // medianas
+                    else -> 3.4f        // grandes
+                },
+                phase = rnd.nextFloat() * (2f * kotlin.math.PI.toFloat()),
+                speed = 0.6f + rnd.nextFloat() * 1.6f,
+                colorIndex = rnd.nextInt(0, maxOf(1, starColors.size))
             )
         }
     }
 
     Canvas(modifier = modifier) {
-        val width = size.width
-        val height = size.height
-        val colorCount = starColors.size.coerceAtLeast(1)
-        stars.forEach { star ->
-            val t = (sin(globalTime * star.speed + star.phase) + 1f) * 0.5f
-            val radius = star.size * (0.5f + t * 0.5f)
-            val color = starColors.getOrElse(star.colorIndex % colorCount) { Color.White }
+        val w = size.width
+        val h = size.height
+        val colors = if (starColors.isEmpty()) listOf(Color.White) else starColors
+
+        stars.forEach { s ->
+            // Twinkle (0..1)
+            val t = (kotlin.math.sin(globalTime * s.speed + s.phase) + 1f) * 0.5f
+            // Radio amplificado para que el cambio sea visible
+            val r = (s.base + 1.2f * t)
+
+            val c = colors[s.colorIndex % colors.size]
+            val center = Offset(s.pos.x * w, s.pos.y * h)
+
+            // Halo suave (más grande, menos alfa)
             drawCircle(
-                color = color.copy(alpha = 0.4f + 0.6f * t),
-                radius = radius,
-                center = Offset(star.pos.x * width, star.pos.y * height)
+                color = c.copy(alpha = 0.22f + 0.38f * t),
+                radius = r * 2.4f,
+                center = center
+            )
+            // Núcleo
+            drawCircle(
+                color = c.copy(alpha = 0.65f + 0.35f * t),
+                radius = r,
+                center = center
             )
         }
     }
 }
+
 
 @Composable
 fun rememberInterpolatedColors(
