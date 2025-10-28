@@ -38,7 +38,7 @@ import com.g22.orbitsoundkotlin.services.AuthUser
 import com.g22.orbitsoundkotlin.data.RememberSettings
 import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
 import com.g22.orbitsoundkotlin.data.userPreferencesStore
-import com.g22.orbitsoundkotlin.ui.screens.HomeScreen
+import com.g22.orbitsoundkotlin.ui.screens.home.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
 import com.g22.orbitsoundkotlin.ui.screens.library.LibraryScreen
 import com.g22.orbitsoundkotlin.ui.screens.auth.AuthScreenCallbacks
