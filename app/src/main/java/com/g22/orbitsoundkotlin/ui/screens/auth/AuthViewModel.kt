@@ -183,12 +183,59 @@ class AuthViewModel(
     fun latestAuthResult(): AuthResult.Success? = lastAuthResult
 
     private fun validateEmail(value: String): String? {
-        return if (EMAIL_REGEX.matches(value)) null else "Enter a valid email address."
+        val email = value.trim()
+        if (email.isEmpty()) return "Email is required."
+        if (email.any { it.isWhitespace() }) return "Email must not contain spaces."
+        if (".." in email) return "Email is invalid (consecutive dots)."
+
+        val atIdx = email.indexOf('@')
+        if (atIdx <= 0 || atIdx == email.lastIndex) return "Email is invalid (missing parts)."
+
+        val local = email.substring(0, atIdx)
+        val domain = email.substring(atIdx + 1)
+
+        // Local part checks
+        if (local.length !in 1..64) return "Email is invalid (local part length)."
+        if (local.startsWith('.') || local.endsWith('.')) return "Email is invalid (dot at start/end of local-part)."
+
+        // Domain checks
+        val labels = domain.split('.')
+        if (labels.size < 2) return "Email is invalid (domain must have a TLD)."
+        if (labels.any { it.isEmpty() }) return "Email is invalid (empty domain label)."
+
+        // TLD: last label
+        val tld = labels.last()
+        if (tld.length !in 2..24 || !tld.all { it.isLetter() }) return "Email is invalid (bad TLD)."
+
+        // Each label 2–63, allowed [A-Za-z0-9-], not start/end with '-'
+        for (label in labels) {
+            if (label.length !in 2..63) return "Email is invalid (domain labels must be 2–63 chars)."
+            if (!label.all { it.isLetterOrDigit() || it == '-' }) return "Email is invalid (domain contains invalid chars)."
+            if (label.first() == '-' || label.last() == '-') return "Email is invalid (hyphen placement in domain)."
+        }
+
+        return null
     }
 
+
+
     private fun validatePassword(value: String): String? {
-        return if (PASSWORD_REGEX.matches(value)) null else "Password must be 8+ chars with letters and numbers."
+        val pwd = value
+        val missing = mutableListOf<String>()
+
+        if (pwd.length < 8) missing += "at least 8 characters"
+        if (!pwd.any { it.isLowerCase() }) missing += "a lowercase letter"
+        if (!pwd.any { it.isUpperCase() }) missing += "an uppercase letter"
+        if (!pwd.any { it.isDigit() })     missing += "a number"
+        if (!pwd.any { !it.isLetterOrDigit() }) missing += "a symbol"
+        if (pwd.isNotEmpty() && (pwd.first().isWhitespace() || pwd.last().isWhitespace()))
+            missing += "no spaces at the start or end"
+
+        return if (missing.isEmpty()) null
+        else "Password must include: ${missing.joinToString(", ")}."
     }
+
+
 
     data class AuthUiState(
         val email: String = "",
@@ -204,7 +251,10 @@ class AuthViewModel(
     )
 
     companion object {
-        private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")
-        private val PASSWORD_REGEX = Regex("^(?=.*[A-Za-z])(?=.*\\d).{8,}$")
+        // RFC 5322-lite, case-insensitive, limita longitudes típicas (local <=64, total <=254)
+        private val EMAIL_REGEX = Regex(
+            pattern = "^(?=.{1,254}\$)(?=.{1,64}@)[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\$",
+            option = RegexOption.IGNORE_CASE
+        )
     }
 }
