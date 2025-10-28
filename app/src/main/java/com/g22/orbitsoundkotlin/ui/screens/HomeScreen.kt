@@ -96,7 +96,7 @@ import org.json.JSONObject
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.random.Random
-import com.g22.orbitsoundkotlin.auth.AuthUser
+import com.g22.orbitsoundkotlin.services.AuthUser
 import com.g22.orbitsoundkotlin.ui.screens.shared.painterByNameOrNull
 
 
