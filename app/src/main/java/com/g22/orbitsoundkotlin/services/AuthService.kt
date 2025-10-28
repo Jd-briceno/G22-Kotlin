@@ -1,4 +1,4 @@
-package com.g22.orbitsoundkotlin.auth
+package com.g22.orbitsoundkotlin.services
 
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.AuthCredential
@@ -29,7 +29,7 @@ class AuthService(
 
     private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    suspend fun signInWithEmail(email: String, password: String): AuthResult {
+    suspend fun login(email: String, password: String): AuthResult {
         return try {
             val result = auth.signInWithEmailAndPassword(email, password).awaitResult()
             val user = result.user ?: return AuthResult.Error("Unable to authenticate right now.")
@@ -40,14 +40,14 @@ class AuthService(
         }
     }
 
-    suspend fun registerWithEmail(email: String, password: String): AuthResult {
+    suspend fun signup(name: String, email: String, password: String): AuthResult {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).awaitResult()
             val user = result.user ?: return AuthResult.Error("Unable to create the account right now.")
             // Creamos/aseguramos documento base de manera asíncrona para no bloquear la UI
             backgroundScope.launch {
                 try {
-                    ensureUserDocument(user, isNewUser = true)
+                    ensureUserDocument(user, isNewUser = true, name = name)
                 } catch (cancellation: CancellationException) {
                     throw cancellation
                 } catch (_: Exception) {
@@ -125,12 +125,17 @@ class AuthService(
         }
     }
 
-    private suspend fun ensureUserDocument(user: FirebaseUser, isNewUser: Boolean) {
+    private suspend fun ensureUserDocument(
+        user: FirebaseUser,
+        isNewUser: Boolean,
+        name: String? = null
+    ) {
         val docRef = firestore.collection(USERS_COLLECTION).document(user.uid)
         if (isNewUser) {
             val data = mapOf(
                 "email" to (user.email ?: ""),
                 "createdAt" to FieldValue.serverTimestamp(),
+                "name" to (name ?: user.displayName.orEmpty()),
                 "completedInterests" to false
             )
             docRef.set(data, SetOptions.merge()).awaitResult()
@@ -140,6 +145,7 @@ class AuthService(
                 val data = mapOf(
                     "email" to (user.email ?: ""),
                     "createdAt" to FieldValue.serverTimestamp(),
+                    "name" to (name ?: user.displayName.orEmpty()),
                     "completedInterests" to false
                 )
                 docRef.set(data, SetOptions.merge()).awaitResult()
