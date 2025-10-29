@@ -190,15 +190,10 @@ class SpotifyService private constructor() {
                 val items = jsonResponse.getAsJsonArray("items")
 
                 val tracks = mutableListOf<Track>()
-                items?.forEachIndexed { index, item ->
+                items?.forEach { item ->
                     val trackObj = item.asJsonObject.getAsJsonObject("track")
                     if (trackObj != null && trackObj.get("id") != null) {
-                        val trackMap = trackObj.asMap()
-                        if (index == 0) {
-                            Log.d(TAG, "Playlist Track 0 - Map keys: ${trackMap.keys}")
-                            Log.d(TAG, "Playlist Track 0 - 'name': ${trackMap["name"]}")
-                        }
-                        val track = trackMapper.map(trackMap)
+                        val track = trackMapper.map(trackObj)
                         if (track.title.isNotEmpty()) {
                             tracks.add(track)
                         }
@@ -254,19 +249,13 @@ class SpotifyService private constructor() {
                     try {
                         val trackObj = item.asJsonObject
                         if (trackObj.get("id") != null) {
-                            val trackMap = trackObj.asMap()
-                            Log.d(TAG, "Track $index - Map keys: ${trackMap.keys}")
-                            Log.d(TAG, "Track $index - 'name' value: ${trackMap["name"]}")
-                            Log.d(TAG, "Track $index - 'artists' value: ${trackMap["artists"]}")
-                            
-                            val track = trackMapper.map(trackMap)
+                            val track = trackMapper.map(trackObj)
                             tracks.add(track)
-                            Log.d(TAG, "Track $index parseado: ${track.title} - ${track.artist}")
                         } else {
                             Log.w(TAG, "Track $index sin ID, omitido")
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error parseando track $index", e)
+                        Log.e(TAG, "❌ Error parseando track $index", e)
                     }
                 }
                 
@@ -386,39 +375,4 @@ class SpotifyService private constructor() {
 
         playlists
     }
-}
-
-private fun JsonObject.asMap(): Map<String, Any?> {
-    val map = mutableMapOf<String, Any?>()
-    this.entrySet().forEach { entry ->
-        when (val value = entry.value) {
-            is com.google.gson.JsonPrimitive -> {
-                map[entry.key] = when {
-                    value.isString -> value.asString
-                    value.isNumber -> value.asNumber
-                    value.isBoolean -> value.asBoolean
-                    else -> value.asString
-                }
-            }
-            is com.google.gson.JsonObject -> map[entry.key] = value.asMap()
-            is com.google.gson.JsonArray -> {
-                map[entry.key] = value.map { element ->
-                    when (element) {
-                        is com.google.gson.JsonPrimitive -> {
-                            when {
-                                element.isString -> element.asString
-                                element.isNumber -> element.asNumber
-                                element.isBoolean -> element.asBoolean
-                                else -> element.asString
-                            }
-                        }
-                        is com.google.gson.JsonObject -> element.asMap()
-                        else -> element.toString()
-                    }
-                }
-            }
-            else -> map[entry.key] = value.toString()
-        }
-    }
-    return map
 }
