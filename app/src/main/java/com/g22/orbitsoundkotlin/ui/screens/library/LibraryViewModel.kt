@@ -3,6 +3,9 @@ package com.g22.orbitsoundkotlin.ui.screens.library
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.g22.orbitsoundkotlin.data.MusicRecommendationEngine
+import com.g22.orbitsoundkotlin.models.Constellation
+import com.g22.orbitsoundkotlin.models.EmotionModel
 import com.g22.orbitsoundkotlin.models.Track
 import com.g22.orbitsoundkotlin.services.SpotifyService
 import kotlinx.coroutines.async
@@ -21,7 +24,18 @@ class LibraryViewModel(
     
     init {
         Log.d("LibraryViewModel", "Inicializando LibraryViewModel")
-        loadPlaylists()
+        loadPersonalizedPlaylists()
+    }
+    
+    /**
+     * Actualiza las recomendaciones basadas en constelaciones y emociones del usuario.
+     * Puede ser llamado cuando el usuario actualice sus preferencias.
+     */
+    fun refreshRecommendations(
+        userConstellations: List<Constellation> = emptyList(),
+        recentEmotions: List<EmotionModel> = emptyList()
+    ) {
+        loadPersonalizedPlaylists(userConstellations, recentEmotions)
     }
     
     fun searchTracks(query: String) {
@@ -55,38 +69,59 @@ class LibraryViewModel(
         _uiState.update { it.copy(selectedTrack = null) }
     }
     
-    private fun loadPlaylists() {
-        Log.d("LibraryViewModel", "Cargando playlists...")
+    /**
+     * Carga playlists personalizadas usando el motor de recomendaciones.
+     */
+    private fun loadPersonalizedPlaylists(
+        userConstellations: List<Constellation> = emptyList(),
+        recentEmotions: List<EmotionModel> = emptyList()
+    ) {
+        Log.d("LibraryViewModel", "Cargando playlists personalizadas...")
+        Log.d("LibraryViewModel", "Constelaciones: ${userConstellations.size}, Emociones: ${recentEmotions.size}")
+        
         viewModelScope.launch {
             _uiState.update { it.copy(playlistsLoading = true) }
             try {
+                // Generar secciones personalizadas
+                val sections = MusicRecommendationEngine.generatePlaylistSections(
+                    userConstellations = userConstellations,
+                    recentEmotions = recentEmotions
+                )
+                
+                Log.d("LibraryViewModel", "Secciones generadas: ${sections.joinToString { it.title }}")
                 Log.d("LibraryViewModel", "Iniciando búsquedas paralelas")
-                val starlightDeferred = async { spotifyService.searchTracks("lofi music") }
-                val djNovaDeferred = async { spotifyService.searchTracks("electronic dance music") }
-                val eternalHitsDeferred = async { spotifyService.searchTracks("rock music") }
-                val orbitCrewDeferred = async { spotifyService.searchTracks("pop hits") }
                 
-                val starlightSongs = starlightDeferred.await()
-                val djNovaSongs = djNovaDeferred.await()
-                val eternalHitsSongs = eternalHitsDeferred.await()
-                val orbitCrewSongs = orbitCrewDeferred.await()
+                // Cargar tracks para cada sección en paralelo
+                val section1Deferred = async { 
+                    spotifyService.searchTracks(sections[0].query)
+                }
+                val section2Deferred = async { 
+                    spotifyService.searchTracks(sections[1].query)
+                }
+                val section3Deferred = async { 
+                    spotifyService.searchTracks(sections[2].query)
+                }
+                val section4Deferred = async { 
+                    spotifyService.searchTracks(sections[3].query)
+                }
                 
-                Log.d("LibraryViewModel", "Playlists cargadas: Starlight=${starlightSongs.size}, DJ Nova=${djNovaSongs.size}, Eternal=${eternalHitsSongs.size}, Orbit=${orbitCrewSongs.size}")
+                val section1Songs = section1Deferred.await()
+                val section2Songs = section2Deferred.await()
+                val section3Songs = section3Deferred.await()
+                val section4Songs = section4Deferred.await()
+                
+                Log.d("LibraryViewModel", "Playlists cargadas: ${section1Songs.size}, ${section2Songs.size}, ${section3Songs.size}, ${section4Songs.size}")
                 
                 _uiState.update { it.copy(
-                    starlightSongs = starlightSongs,
-                    djNovaSongs = djNovaSongs,
-                    eternalHitsSongs = eternalHitsSongs,
-                    orbitCrewSongs = orbitCrewSongs,
+                    section1 = PlaylistSectionData(sections[0], section1Songs),
+                    section2 = PlaylistSectionData(sections[1], section2Songs),
+                    section3 = PlaylistSectionData(sections[2], section3Songs),
+                    section4 = PlaylistSectionData(sections[3], section4Songs),
                     playlistsLoading = false
                 )}
             } catch (e: Exception) {
-                Log.e("LibraryViewModel", "Error cargando playlists, usando fallback", e)
+                Log.e("LibraryViewModel", "Error cargando playlists personalizadas", e)
                 _uiState.update { it.copy(
-                    starlightSongs = getFallbackTracks(),
-                    djNovaSongs = getFallbackTracks(),
-                    eternalHitsSongs = getFallbackTracks(),
-                    orbitCrewSongs = getFallbackTracks(),
                     playlistsLoading = false,
                     error = e.message
                 )}
@@ -94,22 +129,45 @@ class LibraryViewModel(
         }
     }
     
-    private fun getFallbackTracks() = listOf(
-        Track("Lofi Study", "Chill Beats", "3:45", 225000, ""),
-        Track("Peaceful Morning", "Ambient Sounds", "4:12", 252000, ""),
-        Track("Coffee Shop Vibes", "Relaxing Music", "3:30", 210000, "")
+    /**
+     * Data class que combina información de la sección con sus tracks.
+     */
+    data class PlaylistSectionData(
+        val section: MusicRecommendationEngine.PlaylistSection,
+        val tracks: List<Track>
     )
     
+    /**
+     * Estado de la UI de LibraryScreen.
+     */
     data class LibraryUiState(
+        // Búsqueda
         val searchResults: List<Track> = emptyList(),
         val searchLoading: Boolean = false,
-        val starlightSongs: List<Track> = emptyList(),
-        val djNovaSongs: List<Track> = emptyList(),
-        val eternalHitsSongs: List<Track> = emptyList(),
-        val orbitCrewSongs: List<Track> = emptyList(),
+        
+        // Secciones personalizadas de playlists
+        val section1: PlaylistSectionData? = null,
+        val section2: PlaylistSectionData? = null,
+        val section3: PlaylistSectionData? = null,
+        val section4: PlaylistSectionData? = null,
+        
+        // Estado general
         val playlistsLoading: Boolean = false,
         val selectedTrack: Track? = null,
         val error: String? = null
-    )
+    ) {
+        // Propiedades de compatibilidad con código legacy (LibraryScreen)
+        @Deprecated("Use section1.tracks instead", ReplaceWith("section1?.tracks ?: emptyList()"))
+        val starlightSongs: List<Track> get() = section1?.tracks ?: emptyList()
+        
+        @Deprecated("Use section2.tracks instead", ReplaceWith("section2?.tracks ?: emptyList()"))
+        val djNovaSongs: List<Track> get() = section2?.tracks ?: emptyList()
+        
+        @Deprecated("Use section3.tracks instead", ReplaceWith("section3?.tracks ?: emptyList()"))
+        val eternalHitsSongs: List<Track> get() = section3?.tracks ?: emptyList()
+        
+        @Deprecated("Use section4.tracks instead", ReplaceWith("section4?.tracks ?: emptyList()"))
+        val orbitCrewSongs: List<Track> get() = section4?.tracks ?: emptyList()
+    }
 }
 

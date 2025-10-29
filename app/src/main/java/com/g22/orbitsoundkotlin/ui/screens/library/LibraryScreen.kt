@@ -150,36 +150,49 @@ fun LibraryScreen(
                 }
             }
         } else {
-            item {
-                SongSection(
-                    title = "✨ Starlight Suggestions",
-                    songs = uiState.starlightSongs,
-                    onSongClick = viewModel::selectTrack
-                )
+            // Secciones dinámicas de playlists
+            uiState.section1?.let { section ->
+                item {
+                    SongSection(
+                        title = section.section.title,
+                        subtitle = section.section.subtitle,
+                        songs = section.tracks,
+                        onSongClick = viewModel::selectTrack
+                    )
+                }
             }
 
-            item {
-                SongSection(
-                    title = "🎧 DJ Nova's Set",
-                    songs = uiState.djNovaSongs,
-                    onSongClick = viewModel::selectTrack
-                )
+            uiState.section2?.let { section ->
+                item {
+                    SongSection(
+                        title = section.section.title,
+                        subtitle = section.section.subtitle,
+                        songs = section.tracks,
+                        onSongClick = viewModel::selectTrack
+                    )
+                }
             }
 
-            item {
-                SongSection(
-                    title = "💖 Eternal Hits",
-                    songs = uiState.eternalHitsSongs,
-                    onSongClick = viewModel::selectTrack
-                )
+            uiState.section3?.let { section ->
+                item {
+                    SongSection(
+                        title = section.section.title,
+                        subtitle = section.section.subtitle,
+                        songs = section.tracks,
+                        onSongClick = viewModel::selectTrack
+                    )
+                }
             }
 
-            item {
-                SongSection(
-                    title = "🎧 Orbit Crew Playlist",
-                    songs = uiState.orbitCrewSongs,
-                    onSongClick = viewModel::selectTrack
-                )
+            uiState.section4?.let { section ->
+                item {
+                    SongSection(
+                        title = section.section.title,
+                        subtitle = section.section.subtitle,
+                        songs = section.tracks,
+                        onSongClick = viewModel::selectTrack
+                    )
+                }
             }
         }
 
@@ -494,7 +507,8 @@ fun SongResultCard(
 fun SongSection(
     title: String,
     songs: List<Track>,
-    onSongClick: (Track) -> Unit
+    onSongClick: (Track) -> Unit,
+    subtitle: String? = null
 ) {
     Column {
         Text(
@@ -502,8 +516,17 @@ fun SongSection(
             color = Color(0xFFE9E8EE),
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
         )
+        
+        subtitle?.let {
+            Text(
+                text = it,
+                color = Color(0xFFB4B1B8),
+                fontSize = 14.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
 
         LazyRow(
             modifier = Modifier.height(180.dp)
