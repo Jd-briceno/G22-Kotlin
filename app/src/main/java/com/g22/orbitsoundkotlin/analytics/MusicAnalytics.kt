@@ -1,9 +1,8 @@
 package com.g22.orbitsoundkotlin.analytics
 
+import android.content.Context
 import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.analytics.ktx.analytics
-import com.google.firebase.ktx.Firebase
 
 /**
  * Servicio centralizado para analytics de música y comportamiento del usuario.
@@ -14,9 +13,22 @@ import com.google.firebase.ktx.Firebase
  */
 object MusicAnalytics {
     
-    private val analytics: FirebaseAnalytics by lazy {
-        Firebase.analytics
+    private var analyticsInstance: FirebaseAnalytics? = null
+    
+    /**
+     * Inicializa el servicio de analytics.
+     * Debe ser llamado desde MainActivity o Application.
+     */
+    fun initialize(context: Context) {
+        if (analyticsInstance == null) {
+            analyticsInstance = FirebaseAnalytics.getInstance(context)
+        }
     }
+    
+    private val analytics: FirebaseAnalytics
+        get() = analyticsInstance ?: throw IllegalStateException(
+            "MusicAnalytics no ha sido inicializado. Llama a MusicAnalytics.initialize(context) primero."
+        )
     
     // ═══════════════════════════════════════════════════════════
     // SECCIONES DE LIBRARY - Engagement por Recomendación

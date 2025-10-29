@@ -32,6 +32,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.launch
+import com.g22.orbitsoundkotlin.analytics.MusicAnalytics
 import com.g22.orbitsoundkotlin.services.AuthResult
 import com.g22.orbitsoundkotlin.services.AuthService
 import com.g22.orbitsoundkotlin.services.AuthUser
@@ -56,6 +57,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         FirebaseApp.initializeApp(this)
+        
+        // 📊 Inicializar Analytics
+        MusicAnalytics.initialize(this)
+        
         setContent {
             OrbitSoundKotlinTheme {
                 OrbitSoundApp()
