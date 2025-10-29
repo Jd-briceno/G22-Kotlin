@@ -113,11 +113,16 @@ fun LibraryScreen(
                 LazyRow(
                     modifier = Modifier.height(180.dp)
                 ) {
-                    items(uiState.searchResults) { song ->
+                    itemsIndexed(uiState.searchResults) { index, song ->
                         SongResultCard(
                             song = song,
                             onClick = {
-                                viewModel.selectTrack(song)
+                                // 📊 Analytics: Track con posición y query
+                                viewModel.selectTrackFromSearch(
+                                    track = song,
+                                    position = index,
+                                    query = uiState.lastSearchQuery
+                                )
                             }
                         )
                     }
@@ -157,7 +162,10 @@ fun LibraryScreen(
                         title = section.section.title,
                         subtitle = section.section.subtitle,
                         songs = section.tracks,
-                        onSongClick = viewModel::selectTrack
+                        onSongClick = { track ->
+                            // 📊 Analytics: Track con sección
+                            viewModel.selectTrackFromSection(track, sectionPosition = 1)
+                        }
                     )
                 }
             }
@@ -168,7 +176,10 @@ fun LibraryScreen(
                         title = section.section.title,
                         subtitle = section.section.subtitle,
                         songs = section.tracks,
-                        onSongClick = viewModel::selectTrack
+                        onSongClick = { track ->
+                            // 📊 Analytics: Track con sección
+                            viewModel.selectTrackFromSection(track, sectionPosition = 2)
+                        }
                     )
                 }
             }
@@ -179,7 +190,10 @@ fun LibraryScreen(
                         title = section.section.title,
                         subtitle = section.section.subtitle,
                         songs = section.tracks,
-                        onSongClick = viewModel::selectTrack
+                        onSongClick = { track ->
+                            // 📊 Analytics: Track con sección
+                            viewModel.selectTrackFromSection(track, sectionPosition = 3)
+                        }
                     )
                 }
             }
@@ -190,7 +204,10 @@ fun LibraryScreen(
                         title = section.section.title,
                         subtitle = section.section.subtitle,
                         songs = section.tracks,
-                        onSongClick = viewModel::selectTrack
+                        onSongClick = { track ->
+                            // 📊 Analytics: Track con sección
+                            viewModel.selectTrackFromSection(track, sectionPosition = 4)
+                        }
                     )
                 }
             }
