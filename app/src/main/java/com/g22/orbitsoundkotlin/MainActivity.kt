@@ -1,6 +1,6 @@
 package com.g22.orbitsoundkotlin
 
-import StellarEmotionsViewModel
+import com.g22.orbitsoundkotlin.ui.viewmodels.StellarEmotionsViewModel
 import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -43,13 +43,13 @@ import com.g22.orbitsoundkotlin.ui.screens.home.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
 import com.g22.orbitsoundkotlin.ui.screens.library.LibraryScreen
 import com.g22.orbitsoundkotlin.ui.screens.auth.AuthScreenCallbacks
-import com.g22.orbitsoundkotlin.ui.screens.auth.AuthViewModel
+import com.g22.orbitsoundkotlin.ui.viewmodels.AuthViewModel
 import com.g22.orbitsoundkotlin.ui.screens.auth.LocalAuthScreenCallbacks
 import com.g22.orbitsoundkotlin.ui.screens.auth.LoginScreen
 import com.g22.orbitsoundkotlin.ui.screens.auth.SignupScreen
 import com.g22.orbitsoundkotlin.ui.screens.profile.ProfileScreen
-import com.g22.orbitsoundkotlin.ui.screens.StellarEmotionsScreen
-import com.g22.orbitsoundkotlin.ui.screens.ConstellationsScreen
+import com.g22.orbitsoundkotlin.ui.screens.emotions.StellarEmotionsScreen
+import com.g22.orbitsoundkotlin.ui.screens.emotions.ConstellationsScreen
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 
 class MainActivity : ComponentActivity() {

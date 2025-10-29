@@ -2,7 +2,6 @@
 package com.g22.orbitsoundkotlin.models
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 
 data class EmotionModel(
     val id: String,
