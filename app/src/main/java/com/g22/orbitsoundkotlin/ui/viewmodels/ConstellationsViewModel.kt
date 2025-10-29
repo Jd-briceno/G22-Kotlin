@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.models.Constellation
-import com.g22.orbitsoundkotlin.models.EmotionSuggestionModel
+import com.g22.orbitsoundkotlin.services.EmotionSuggestionService
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
  */
 class ConstellationsViewModel : ViewModel() {
 
-    private val emotionSuggestionModel = EmotionSuggestionModel()
+    private val emotionSuggestionService = EmotionSuggestionService.getInstance()
 
     // State for selected constellation
     private val _selectedConstellation = MutableStateFlow<Constellation?>(null)
@@ -125,7 +125,7 @@ class ConstellationsViewModel : ViewModel() {
         viewModelScope.launch {
             Log.d("ConstellationsViewModel", "Starting AI suggestion query...")
             val result = try {
-                emotionSuggestionModel.getSuggestion(emotion)
+                emotionSuggestionService.getSuggestion(emotion)
             } catch (e: Exception) {
                 Log.e("ConstellationsViewModel", "Error calling suggestion API", e)
                 null
