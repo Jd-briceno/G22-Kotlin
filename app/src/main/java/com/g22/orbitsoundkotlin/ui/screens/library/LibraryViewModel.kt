@@ -1,5 +1,6 @@
 package com.g22.orbitsoundkotlin.ui.screens.library
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.models.Track
@@ -19,21 +20,25 @@ class LibraryViewModel(
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
     
     init {
+        Log.d("LibraryViewModel", "Inicializando LibraryViewModel")
         loadPlaylists()
     }
     
     fun searchTracks(query: String) {
         if (query.isEmpty()) return
         
+        Log.d("LibraryViewModel", "Buscando tracks: $query")
         viewModelScope.launch {
             _uiState.update { it.copy(searchLoading = true) }
             try {
                 val tracks = spotifyService.searchTracks(query)
+                Log.d("LibraryViewModel", "Tracks encontrados: ${tracks.size}")
                 _uiState.update { it.copy(
                     searchResults = tracks,
                     searchLoading = false
                 )}
             } catch (e: Exception) {
+                Log.e("LibraryViewModel", "Error buscando tracks", e)
                 _uiState.update { it.copy(
                     searchLoading = false,
                     error = e.message
@@ -51,22 +56,32 @@ class LibraryViewModel(
     }
     
     private fun loadPlaylists() {
+        Log.d("LibraryViewModel", "Cargando playlists...")
         viewModelScope.launch {
             _uiState.update { it.copy(playlistsLoading = true) }
             try {
+                Log.d("LibraryViewModel", "Iniciando búsquedas paralelas")
                 val starlightDeferred = async { spotifyService.searchTracks("lofi music") }
                 val djNovaDeferred = async { spotifyService.searchTracks("electronic dance music") }
                 val eternalHitsDeferred = async { spotifyService.searchTracks("rock music") }
                 val orbitCrewDeferred = async { spotifyService.searchTracks("pop hits") }
                 
+                val starlightSongs = starlightDeferred.await()
+                val djNovaSongs = djNovaDeferred.await()
+                val eternalHitsSongs = eternalHitsDeferred.await()
+                val orbitCrewSongs = orbitCrewDeferred.await()
+                
+                Log.d("LibraryViewModel", "Playlists cargadas: Starlight=${starlightSongs.size}, DJ Nova=${djNovaSongs.size}, Eternal=${eternalHitsSongs.size}, Orbit=${orbitCrewSongs.size}")
+                
                 _uiState.update { it.copy(
-                    starlightSongs = starlightDeferred.await(),
-                    djNovaSongs = djNovaDeferred.await(),
-                    eternalHitsSongs = eternalHitsDeferred.await(),
-                    orbitCrewSongs = orbitCrewDeferred.await(),
+                    starlightSongs = starlightSongs,
+                    djNovaSongs = djNovaSongs,
+                    eternalHitsSongs = eternalHitsSongs,
+                    orbitCrewSongs = orbitCrewSongs,
                     playlistsLoading = false
                 )}
             } catch (e: Exception) {
+                Log.e("LibraryViewModel", "Error cargando playlists, usando fallback", e)
                 _uiState.update { it.copy(
                     starlightSongs = getFallbackTracks(),
                     djNovaSongs = getFallbackTracks(),

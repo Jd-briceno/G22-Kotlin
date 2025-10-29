@@ -1,5 +1,6 @@
 package com.g22.orbitsoundkotlin.data.mappers
 
+import android.util.Log
 import com.g22.orbitsoundkotlin.models.Track
 
 /**
@@ -8,15 +9,28 @@ import com.g22.orbitsoundkotlin.models.Track
  */
 class SpotifyTrackMapper : Mapper<Map<String, Any?>, Track> {
     
+    companion object {
+        private const val TAG = "SpotifyTrackMapper"
+    }
+    
     override fun map(input: Map<String, Any?>): Track {
-        return Track(
-            title = extractTitle(input),
-            artist = extractArtist(input),
-            duration = formatDuration(input),
-            durationMs = extractDurationMs(input),
-            albumArt = extractAlbumArt(input),
-            previewUrl = input["preview_url"] as? String
-        )
+        Log.d(TAG, "Mapeando track: ${input["name"]}")
+        
+        return try {
+            Track(
+                title = extractTitle(input),
+                artist = extractArtist(input),
+                duration = formatDuration(input),
+                durationMs = extractDurationMs(input),
+                albumArt = extractAlbumArt(input),
+                previewUrl = input["preview_url"] as? String
+            ).also {
+                Log.d(TAG, "Track mapeado exitosamente: ${it.title} - ${it.artist}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error mapeando track", e)
+            throw e
+        }
     }
     
     /**

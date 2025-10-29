@@ -73,6 +73,26 @@ fun LibraryScreen(
             Spacer(modifier = Modifier.height(5.dp))
         }
 
+        // Mostrar mensaje de error si existe
+        uiState.error?.let { errorMessage ->
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .background(Color(0xFFFF5252).copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                        .border(1.dp, Color(0xFFFF5252), RoundedCornerShape(8.dp))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "⚠️ Error: $errorMessage",
+                        color = Color(0xFFFFCDD2),
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+
         if (uiState.searchLoading) {
             item {
                 Box(
