@@ -260,7 +260,6 @@ class LibraryViewModel(
             }
         }
     }
-<<<<<<< HEAD:app/src/main/java/com/g22/orbitsoundkotlin/ui/screens/library/LibraryViewModel.kt
     
     /**
      * Data class that combines section information with its tracks.
@@ -273,15 +272,6 @@ class LibraryViewModel(
     /**
      * UI state for LibraryScreen.
      */
-=======
-
-    private fun getFallbackTracks() = listOf(
-        Track("Lofi Study", "Chill Beats", "3:45", 225000, ""),
-        Track("Peaceful Morning", "Ambient Sounds", "4:12", 252000, ""),
-        Track("Coffee Shop Vibes", "Relaxing Music", "3:30", 210000, "")
-    )
-
->>>>>>> origin/main:app/src/main/java/com/g22/orbitsoundkotlin/ui/viewmodels/LibraryViewModel.kt
     data class LibraryUiState(
         // Search
         val searchResults: List<Track> = emptyList(),
@@ -298,7 +288,6 @@ class LibraryViewModel(
         val playlistsLoading: Boolean = false,
         val selectedTrack: Track? = null,
         val error: String? = null
-<<<<<<< HEAD:app/src/main/java/com/g22/orbitsoundkotlin/ui/screens/library/LibraryViewModel.kt
     ) {
         // Legacy compatibility properties (LibraryScreen)
         @Deprecated("Use section1.tracks instead", ReplaceWith("section1?.tracks ?: emptyList()"))
@@ -315,7 +304,3 @@ class LibraryViewModel(
     }
 }
 
-=======
-    )
-}
->>>>>>> origin/main:app/src/main/java/com/g22/orbitsoundkotlin/ui/viewmodels/LibraryViewModel.kt
