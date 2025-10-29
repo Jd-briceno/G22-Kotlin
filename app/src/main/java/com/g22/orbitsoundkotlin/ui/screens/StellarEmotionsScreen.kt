@@ -36,8 +36,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.g22.orbitsoundkotlin.ui.screens.shared.OrbitSoundHeader
-import com.g22.orbitsoundkotlin.ui.screens.shared.StarField
+import com.g22.orbitsoundkotlin.ui.screens.home.OrbitSoundHeader
+import com.g22.orbitsoundkotlin.ui.screens.home.StarField
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 import kotlin.math.cos
 import kotlin.math.sin

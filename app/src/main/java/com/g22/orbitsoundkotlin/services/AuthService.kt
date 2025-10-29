@@ -1,4 +1,4 @@
-package com.g22.orbitsoundkotlin.auth
+package com.g22.orbitsoundkotlin.services
 
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.AuthCredential
@@ -22,14 +22,31 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
-class AuthService(
+// Implementa IAuthService y usa Singleton (GoF) con constructor privado + getInstance()
+class AuthService private constructor(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
-) {
+) : IAuthService {
+
+    companion object {
+        @Volatile private var INSTANCE: AuthService? = null
+
+        fun getInstance(): AuthService =
+            INSTANCE ?: synchronized(this) {
+                INSTANCE ?: AuthService().also { INSTANCE = it }
+            }
+
+        // optional para tests
+        fun setTestInstance(fake: AuthService?) { INSTANCE = fake }
+
+        private const val USERS_COLLECTION = "users"
+    }
 
     private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    suspend fun signInWithEmail(email: String, password: String): AuthResult {
+    // --------- MÉTODOS PÚBLICOS (override) ---------
+
+    override suspend fun login(email: String, password: String): AuthResult {
         return try {
             val result = auth.signInWithEmailAndPassword(email, password).awaitResult()
             val user = result.user ?: return AuthResult.Error("Unable to authenticate right now.")
@@ -40,33 +57,30 @@ class AuthService(
         }
     }
 
-    suspend fun registerWithEmail(email: String, password: String): AuthResult {
+    override suspend fun signup(name: String, email: String, password: String): AuthResult {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).awaitResult()
             val user = result.user ?: return AuthResult.Error("Unable to create the account right now.")
-            // Creamos/aseguramos documento base de manera asíncrona para no bloquear la UI
+            // best-effort en background para no bloquear UI
             backgroundScope.launch {
                 try {
-                    ensureUserDocument(user, isNewUser = true)
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: Exception) {
-                    // best-effort: si Firestore falla no detenemos el flujo de registro
-                }
+                    ensureUserDocument(user, isNewUser = true, name = name)
+                } catch (c: CancellationException) {
+                    throw c
+                } catch (_: Exception) { /* ignore */ }
             }
-            // Primera vez pedimos intereses (luego se marca completado)
             AuthResult.Success(user.toAuthUser(), requiresProfileCompletion = true)
         } catch (ex: Exception) {
             AuthResult.Error(ex.humanMessage())
         }
     }
 
-    suspend fun signInWithGoogle(idToken: String): AuthResult {
+    override suspend fun signInWithGoogle(idToken: String): AuthResult {
         val credential: AuthCredential = GoogleAuthProvider.getCredential(idToken, null)
         return signInWithCredential(credential)
     }
 
-    suspend fun signInWithSpotify(): AuthResult {
+    override suspend fun signInWithSpotify(): AuthResult {
         return try {
             val result = auth.signInAnonymously().awaitResult()
             val user = result.user ?: return AuthResult.Error("Spotify sign-in failed. Try again.")
@@ -78,7 +92,7 @@ class AuthService(
         }
     }
 
-    suspend fun sendPasswordReset(email: String): Result<Unit> {
+    override suspend fun sendPasswordReset(email: String): Result<Unit> {
         return try {
             auth.sendPasswordResetEmail(email).awaitResult()
             Result.success(Unit)
@@ -91,7 +105,7 @@ class AuthService(
         }
     }
 
-    suspend fun updateUserInterests(
+    override suspend fun updateUserInterests(
         user: AuthUser,
         interests: List<String>,
         skipped: Boolean
@@ -101,9 +115,8 @@ class AuthService(
             val data = buildMap<String, Any> {
                 put("email", user.email ?: "")
                 put("updatedAt", FieldValue.serverTimestamp())
-                // Marcamos COMPLETADO siempre para no bloquear el flujo en futuros logins
-                put("completedInterests", true)
-                put("interests", cleanInterests) // puede quedar vacío si skip
+                put("completedInterests", true) // no bloquear futuros logins
+                put("interests", cleanInterests)
             }
             firestore.collection(USERS_COLLECTION)
                 .document(user.id)
@@ -112,6 +125,8 @@ class AuthService(
             Unit
         }
     }
+
+    // --------- HELPERS PRIVADOS ---------
 
     private suspend fun signInWithCredential(credential: AuthCredential): AuthResult {
         return try {
@@ -125,12 +140,17 @@ class AuthService(
         }
     }
 
-    private suspend fun ensureUserDocument(user: FirebaseUser, isNewUser: Boolean) {
+    private suspend fun ensureUserDocument(
+        user: FirebaseUser,
+        isNewUser: Boolean,
+        name: String? = null
+    ) {
         val docRef = firestore.collection(USERS_COLLECTION).document(user.uid)
         if (isNewUser) {
             val data = mapOf(
                 "email" to (user.email ?: ""),
                 "createdAt" to FieldValue.serverTimestamp(),
+                "name" to (name ?: user.displayName.orEmpty()),
                 "completedInterests" to false
             )
             docRef.set(data, SetOptions.merge()).awaitResult()
@@ -140,6 +160,7 @@ class AuthService(
                 val data = mapOf(
                     "email" to (user.email ?: ""),
                     "createdAt" to FieldValue.serverTimestamp(),
+                    "name" to (name ?: user.displayName.orEmpty()),
                     "completedInterests" to false
                 )
                 docRef.set(data, SetOptions.merge()).awaitResult()
@@ -147,10 +168,6 @@ class AuthService(
         }
     }
 
-    /**
-     * Ahora SOLO depende del flag 'completedInterests'.
-     * Si es true ⇒ no pedimos más la pantalla de intereses (aunque la lista esté vacía).
-     */
     private suspend fun requiresProfileCompletion(uid: String): Boolean {
         val snapshot: DocumentSnapshot =
             firestore.collection(USERS_COLLECTION).document(uid).get().awaitResult()
@@ -171,14 +188,9 @@ class AuthService(
         is FirebaseAuthInvalidUserException -> "We couldn't find an account with those details."
         else -> localizedMessage ?: "Something went wrong. Please try again."
     }
-
-    companion object {
-        private const val USERS_COLLECTION = "users"
-    }
 }
 
-/** -------- Helpers: reemplazo de tasks.await() sin depender de kotlinx-coroutines-play-services -------- */
-/** -------- Helpers: reemplazo de tasks.await() sin depender de kotlinx-coroutines-play-services -------- */
+/** -------- Helpers: reemplazo de tasks.await() sin kotlinx-coroutines-play-services -------- */
 private suspend fun <T> Task<T>.awaitResult(): T =
     suspendCancellableCoroutine { cont ->
         addOnCompleteListener { task ->
@@ -194,8 +206,6 @@ private suspend fun <T> Task<T>.awaitResult(): T =
             }
         }
     }
-
-
 
 data class AuthUser(
     val id: String,

@@ -45,8 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.g22.orbitsoundkotlin.R
 import com.g22.orbitsoundkotlin.models.Constellation
-import com.g22.orbitsoundkotlin.ui.screens.shared.OrbitSoundHeader
-import com.g22.orbitsoundkotlin.ui.screens.shared.StarField
+import com.g22.orbitsoundkotlin.ui.screens.home.OrbitSoundHeader
+import com.g22.orbitsoundkotlin.ui.screens.home.StarField
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 
 @Composable

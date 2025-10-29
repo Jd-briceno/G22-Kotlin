@@ -15,6 +15,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,24 +26,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.launch
-import com.g22.orbitsoundkotlin.R
-import com.g22.orbitsoundkotlin.auth.AuthResult
-import com.g22.orbitsoundkotlin.auth.AuthService
-import com.g22.orbitsoundkotlin.auth.AuthUser
+import com.g22.orbitsoundkotlin.services.AuthResult
+import com.g22.orbitsoundkotlin.services.AuthService
+import com.g22.orbitsoundkotlin.services.AuthUser
 import com.g22.orbitsoundkotlin.data.RememberSettings
 import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
 import com.g22.orbitsoundkotlin.data.userPreferencesStore
-import com.g22.orbitsoundkotlin.ui.screens.HomeScreen
+import com.g22.orbitsoundkotlin.ui.screens.home.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
-import com.g22.orbitsoundkotlin.ui.screens.LibraryScreen
-import com.g22.orbitsoundkotlin.ui.screens.LoginScreen
-import com.g22.orbitsoundkotlin.ui.screens.ProfileScreen
-import com.g22.orbitsoundkotlin.ui.screens.SignupScreen
+import com.g22.orbitsoundkotlin.ui.screens.library.LibraryScreen
+import com.g22.orbitsoundkotlin.ui.screens.auth.AuthScreenCallbacks
+import com.g22.orbitsoundkotlin.ui.screens.auth.AuthViewModel
+import com.g22.orbitsoundkotlin.ui.screens.auth.LocalAuthScreenCallbacks
+import com.g22.orbitsoundkotlin.ui.screens.auth.LoginScreen
+import com.g22.orbitsoundkotlin.ui.screens.auth.SignupScreen
+import com.g22.orbitsoundkotlin.ui.screens.profile.ProfileScreen
 import com.g22.orbitsoundkotlin.ui.screens.StellarEmotionsScreen
 import com.g22.orbitsoundkotlin.ui.screens.ConstellationsScreen
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
@@ -63,17 +68,23 @@ class MainActivity : ComponentActivity() {
 private fun OrbitSoundApp() {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-    val authService = remember { AuthService() }
+    val authService = remember { AuthService.getInstance() }
     val context = LocalContext.current
     val userPreferencesRepository = remember { UserPreferencesRepository(context.userPreferencesStore) }
     val rememberSettings by userPreferencesRepository.rememberSettings.collectAsState(initial = RememberSettings())
+    val authViewModel: AuthViewModel = viewModel()
+    val authUiState by authViewModel.uiState.collectAsState()
 
-    // Define a placeholder AuthUser for debug
-    val debugUser = remember {
-        AuthUser(
-            id = "debug-uid-12345",
-            email = "debug@example.com"
-        )
+    var rememberMeChecked by remember { mutableStateOf(rememberSettings.rememberMe) }
+
+    LaunchedEffect(rememberSettings.rememberMe) {
+        rememberMeChecked = rememberSettings.rememberMe
+    }
+
+    LaunchedEffect(rememberSettings.email) {
+        if (rememberSettings.rememberMe && authUiState.email.isBlank()) {
+            authViewModel.onEmailChange(rememberSettings.email)
+        }
     }
 
     val googleClientId = remember {
@@ -100,10 +111,6 @@ private fun OrbitSoundApp() {
     var destination by remember { mutableStateOf<AppDestination>(AppDestination.Login) }
     var isAuthenticating by remember { mutableStateOf(false) }
 
-    // Testing purposes:
-    //var destination by remember { mutableStateOf<AppDestination>(AppDestination.Home(debugUser)) }
-    //var isAuthenticating by remember { mutableStateOf(false) }
-
     fun runAuthRequest(
         request: suspend () -> AuthResult,
         onSuccess: (AuthResult.Success) -> Unit
@@ -111,12 +118,12 @@ private fun OrbitSoundApp() {
         coroutineScope.launch {
             isAuthenticating = true
             try {
-                val result = request()
-                when (result) {
+                when (val result = request()) {
                     is AuthResult.Success -> {
-                        onSuccess(result)   // 🔑 primero navegamos
+                        onSuccess(result)
                         isAuthenticating = false
                     }
+
                     is AuthResult.Error -> {
                         snackbarHostState.showSnackbar(result.message)
                         isAuthenticating = false
@@ -130,7 +137,6 @@ private fun OrbitSoundApp() {
             }
         }
     }
-
 
     fun handleAuthSuccess(success: AuthResult.Success) {
         destination = if (success.requiresProfileCompletion) {
@@ -169,138 +175,107 @@ private fun OrbitSoundApp() {
         }
     }
 
+    val authCallbacks = AuthScreenCallbacks(
+        navigateToLogin = { destination = AppDestination.Login },
+        navigateToSignup = { destination = AppDestination.SignUp },
+        onForgotPassword = { email ->
+            if (email.isBlank()) {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Enter your email first to reset your password.")
+                }
+            } else {
+                coroutineScope.launch {
+                    isAuthenticating = true
+                    val reset = authService.sendPasswordReset(email)
+                    if (reset.isSuccess) {
+                        snackbarHostState.showSnackbar("Password reset email sent to $email.")
+                    } else {
+                        val message = reset.exceptionOrNull()?.message
+                            ?: "Unable to send reset email."
+                        snackbarHostState.showSnackbar(message)
+                    }
+                    isAuthenticating = false
+                }
+            }
+        },
+        onGoogleSignIn = {
+            val client = googleSignInClient
+            if (client == null) {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Configure Google Sign-In in Firebase before using this option.")
+                }
+            } else {
+                isAuthenticating = true
+                client.signOut()
+                googleSignInLauncher.launch(client.signInIntent)
+            }
+        },
+        onAppleSignIn = {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Apple sign-in isn't available on Android yet.")
+            }
+        },
+        onSpotifySignIn = {
+            runAuthRequest(
+                request = { authService.signInWithSpotify() }
+            ) { success ->
+                handleAuthSuccess(success)
+            }
+        },
+        rememberMeValue = rememberMeChecked,
+        onRememberMeChange = { rememberMeChecked = it }
+    )
+
+    val onAuthCompleted = {
+        val success = authViewModel.latestAuthResult()
+        if (success != null) {
+            val emailForSave = authViewModel.uiState.value.email.trim()
+            coroutineScope.launch {
+                val storedEmail = if (rememberMeChecked) emailForSave else ""
+                userPreferencesRepository.updateRememberMe(rememberMeChecked, storedEmail)
+            }
+            handleAuthSuccess(success)
+        } else {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Authentication result unavailable.")
+            }
+        }
+        Unit
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent
     ) { paddingValues ->
         when (val current = destination) {
             AppDestination.Login -> {
-                LoginScreen(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
-                    isLoading = isAuthenticating,
-                    initialEmail = rememberSettings.email,
-                    initialRememberMe = rememberSettings.rememberMe,
-                    showSocialProviders = false,
-                    onSignIn = { email, password, remember ->
-                        val sanitizedEmail = email.trim()
-                        val sanitizedPassword = password.trim()
-                        if (sanitizedEmail.isBlank() || sanitizedPassword.isBlank()) {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Enter email and password to continue.")
-                            }
-                            return@LoginScreen
-                        }
-                        runAuthRequest(
-                            request = { authService.signInWithEmail(sanitizedEmail, sanitizedPassword) }
-                        ) { success ->
-                            coroutineScope.launch {
-                                userPreferencesRepository.updateRememberMe(remember, sanitizedEmail)
-                            }
-                            handleAuthSuccess(success)
-                        }
-                    },
-                    onForgotPassword = { email ->
-                        if (email.isBlank()) {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Enter your email first to reset your password.")
-                            }
-                            return@LoginScreen
-                        }
-                        coroutineScope.launch {
-                            isAuthenticating = true
-                            val reset = authService.sendPasswordReset(email)
-                            if (reset.isSuccess) {
-                                snackbarHostState.showSnackbar("Password reset email sent to $email.")
-                            } else {
-                                val message = reset.exceptionOrNull()?.message
-                                    ?: "Unable to send reset email."
-                                snackbarHostState.showSnackbar(message)
-                            }
-                            isAuthenticating = false
-                        }
-                    },
-                    onNavigateToSignUp = {
-                        destination = AppDestination.SignUp
-                    },
-                    onGoogleSignIn = {
-                        val client = googleSignInClient
-                        if (client == null) {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Configure Google Sign-In in Firebase before using this option.")
-                            }
-                            return@LoginScreen
-                        }
-                        isAuthenticating = true
-                        client.signOut()
-                        googleSignInLauncher.launch(client.signInIntent)
-                    },
-                    onAppleSignIn = {
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Apple sign-in isn't available on Android yet.")
-                        }
-                    },
-                    onSpotifySignIn = {
-                        runAuthRequest(
-                            request = { authService.signInWithSpotify() }
-                        ) { success ->
-                            handleAuthSuccess(success)
-                        }
+                        .padding(paddingValues)
+                ) {
+                    CompositionLocalProvider(LocalAuthScreenCallbacks provides authCallbacks) {
+                        LoginScreen(
+                            viewModel = authViewModel,
+                            onAuthenticated = onAuthCompleted
+                        )
                     }
-                )
+                }
             }
+
             AppDestination.SignUp -> {
-                SignupScreen(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
-                    isLoading = isAuthenticating,
-                    onSignUp = { email, password, confirm ->
-                        when {
-                            email.isBlank() || password.isBlank() || confirm.isBlank() -> {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Please fill in all fields.")
-                                }
-                            }
-                            password != confirm -> {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Passwords do not match.")
-                                }
-                            }
-                            else -> runAuthRequest(
-                                request = { authService.registerWithEmail(email, password) }
-                            ) { success ->
-                                handleAuthSuccess(success)
-                            }
-                        }
-                    },
-                    onAlreadyHaveAccount = { destination = AppDestination.Login },
-                    onGoogleSignUp = {
-                        val client = googleSignInClient
-                        if (client == null) {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Configure Google Sign-In in Firebase before using this option.")
-                            }
-                            return@SignupScreen
-                        }
-                        isAuthenticating = true
-                        client.signOut()
-                        googleSignInLauncher.launch(client.signInIntent)
-                    },
-                    onAppleSignUp = {
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Apple sign-in isn't available on Android yet.")
-                        }
-                    },
-                    onSpotifySignUp = {
-                        runAuthRequest(
-                            request = { authService.signInWithSpotify() }
-                        ) { success ->
-                            handleAuthSuccess(success)
-                        }
+                        .padding(paddingValues)
+                ) {
+                    CompositionLocalProvider(LocalAuthScreenCallbacks provides authCallbacks) {
+                        SignupScreen(
+                            viewModel = authViewModel,
+                            onAuthenticated = onAuthCompleted
+                        )
                     }
-                )
+                }
             }
             is AppDestination.Interests -> {
                 InterestSelectionScreen(
@@ -354,8 +329,6 @@ private fun OrbitSoundApp() {
                             destination = AppDestination.Profile(current.user)
                         }
                     )
-                    // Testing purposes:
-                    //StellarEmotionsScreen(username = current.user.email ?: "User")
                 }
             }
             is AppDestination.StellarEmotions -> {
@@ -379,23 +352,23 @@ private fun OrbitSoundApp() {
                     }
                 )
             }
-    is AppDestination.Library -> {
-        LibraryScreen(
-            onNavigateToProfile = {
-                destination = AppDestination.Profile(current.user)
-            },
-            onNavigateToHome = {
-                destination = AppDestination.Home(current.user)
+            is AppDestination.Library -> {
+                LibraryScreen(
+                    onNavigateToProfile = {
+                        destination = AppDestination.Profile(current.user)
+                    },
+                    onNavigateToHome = {
+                        destination = AppDestination.Home(current.user)
+                    }
+                )
             }
-        )
-    }
-    is AppDestination.Profile -> {
-        ProfileScreen(
-            onNavigateToHome = {
-                destination = AppDestination.Home(current.user)
+            is AppDestination.Profile -> {
+                ProfileScreen(
+                    onNavigateToHome = {
+                        destination = AppDestination.Home(current.user)
+                    }
+                )
             }
-        )
-    }
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.g22.orbitsoundkotlin.ui.screens
+package com.g22.orbitsoundkotlin.ui.screens.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,16 +12,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,89 +24,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.g22.orbitsoundkotlin.models.Track
-import com.g22.orbitsoundkotlin.models.Playlist
-import com.g22.orbitsoundkotlin.services.SpotifyService
 import com.g22.orbitsoundkotlin.ui.components.VinylWithCover
-import com.g22.orbitsoundkotlin.ui.screens.OrbitNavbar
-import kotlinx.coroutines.*
-import kotlinx.coroutines.async
+import com.g22.orbitsoundkotlin.ui.screens.home.OrbitNavbar
 
 @Composable
 fun LibraryScreen(
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToHome: () -> Unit = {}
+    onNavigateToHome: () -> Unit = {},
+    viewModel: LibraryViewModel = viewModel()
 ) {
-    val spotifyService = remember { SpotifyService() }
-    var songs by remember { mutableStateOf<List<Track>>(emptyList()) }
-    var loading by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedTrack by remember { mutableStateOf<Track?>(null) }
-    var showModal by remember { mutableStateOf(false) }
-    
-    var starlightSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
-    var djNovaSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
-    var eternalHitsSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
-    var orbitCrewSongs by remember { mutableStateOf<List<Track>>(emptyList()) }
-    var playlistsLoading by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        try {
-            playlistsLoading = true
-            
-            val starlightDeferred = async { spotifyService.searchTracks("lofi music") }
-            val djNovaDeferred = async { spotifyService.searchTracks("electronic dance music") }
-            val eternalHitsDeferred = async { spotifyService.searchTracks("rock music") }
-            val orbitCrewDeferred = async { spotifyService.searchTracks("pop hits") }
-            
-            starlightSongs = starlightDeferred.await()
-            djNovaSongs = djNovaDeferred.await()
-            eternalHitsSongs = eternalHitsDeferred.await()
-            orbitCrewSongs = orbitCrewDeferred.await()
-            
-        } catch (e: Exception) {
-            starlightSongs = listOf(
-                Track("Lofi Study", "Chill Beats", "3:45", 225000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef123"),
-                Track("Peaceful Morning", "Ambient Sounds", "4:12", 252000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef124"),
-                Track("Coffee Shop Vibes", "Relaxing Music", "3:30", 210000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef125")
-            )
-            djNovaSongs = listOf(
-                Track("Electronic Dreams", "DJ Nova", "4:20", 260000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef126"),
-                Track("Dance Floor", "EDM Master", "3:55", 235000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef127"),
-                Track("Neon Lights", "Synth Wave", "4:08", 248000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef128")
-            )
-            eternalHitsSongs = listOf(
-                Track("Classic Rock Anthem", "Rock Legends", "5:15", 315000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef129"),
-                Track("Timeless Melody", "Eternal Artists", "4:30", 270000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef130")
-            )
-            orbitCrewSongs = listOf(
-                Track("Space Journey", "Orbit Crew", "6:45", 405000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef131"),
-                Track("Indie Vibes", "Alternative Sound", "3:42", 222000, "https://i.scdn.co/image/ab67616d0000b27333a4c2bd3a4a5edcabcdef132")
-            )
-        } finally {
-            playlistsLoading = false
-        }
-    }
-
-    fun searchSongs(query: String) {
-        if (query.isEmpty()) return
-
-        loading = true
-        searchQuery = query
-
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                val results = withContext(Dispatchers.IO) {
-                    spotifyService.searchTracks(query)
-                }
-                songs = results
-            } catch (e: Exception) {
-                // Handle error silently
-            } finally {
-                loading = false
-            }
-        }
-    }
+    val uiState by viewModel.uiState.collectAsState()
 
     // UI Principal
     LazyColumn(
@@ -141,7 +65,7 @@ fun LibraryScreen(
 
         item {
             SearchBarComposable(
-                onSearch = { query -> searchSongs(query) }
+                onSearch = viewModel::searchTracks
             )
         }
 
@@ -149,7 +73,7 @@ fun LibraryScreen(
             Spacer(modifier = Modifier.height(5.dp))
         }
 
-        if (loading) {
+        if (uiState.searchLoading) {
             item {
                 Box(
                     modifier = Modifier
@@ -164,17 +88,16 @@ fun LibraryScreen(
             }
         }
 
-        if (songs.isNotEmpty()) {
+        if (uiState.searchResults.isNotEmpty()) {
             item {
                 LazyRow(
                     modifier = Modifier.height(180.dp)
                 ) {
-                    items(songs) { song ->
+                    items(uiState.searchResults) { song ->
                         SongResultCard(
                             song = song,
                             onClick = {
-                                selectedTrack = song
-                                showModal = true
+                                viewModel.selectTrack(song)
                             }
                         )
                     }
@@ -193,7 +116,7 @@ fun LibraryScreen(
                     .padding(vertical = 16.dp)
             )
         }
-        if (playlistsLoading) {
+        if (uiState.playlistsLoading) {
             item {
                 Box(
                     modifier = Modifier
@@ -210,44 +133,32 @@ fun LibraryScreen(
             item {
                 SongSection(
                     title = "✨ Starlight Suggestions",
-                    songs = starlightSongs,
-                    onSongClick = { song ->
-                        selectedTrack = song
-                        showModal = true
-                    }
+                    songs = uiState.starlightSongs,
+                    onSongClick = viewModel::selectTrack
                 )
             }
 
             item {
                 SongSection(
                     title = "🎧 DJ Nova's Set",
-                    songs = djNovaSongs,
-                    onSongClick = { song ->
-                        selectedTrack = song
-                        showModal = true
-                    }
+                    songs = uiState.djNovaSongs,
+                    onSongClick = viewModel::selectTrack
                 )
             }
 
             item {
                 SongSection(
                     title = "💖 Eternal Hits",
-                    songs = eternalHitsSongs,
-                    onSongClick = { song ->
-                        selectedTrack = song
-                        showModal = true
-                    }
+                    songs = uiState.eternalHitsSongs,
+                    onSongClick = viewModel::selectTrack
                 )
             }
 
             item {
                 SongSection(
                     title = "🎧 Orbit Crew Playlist",
-                    songs = orbitCrewSongs,
-                    onSongClick = { song ->
-                        selectedTrack = song
-                        showModal = true
-                    }
+                    songs = uiState.orbitCrewSongs,
+                    onSongClick = viewModel::selectTrack
                 )
             }
         }
@@ -257,13 +168,10 @@ fun LibraryScreen(
         }
     }
 
-    if (showModal && selectedTrack != null) {
+    uiState.selectedTrack?.let { track ->
         SongDetailModal(
-            track = selectedTrack!!,
-            onDismiss = { 
-                showModal = false
-                selectedTrack = null
-            }
+            track = track,
+            onDismiss = viewModel::dismissTrackDetail
         )
     }
 }
@@ -417,131 +325,6 @@ fun SongDetailModal(
                             modifier = Modifier.size(24.dp)
                         )
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun NavbarComposable(
-    username: String,
-    title: String,
-    subtitle: String,
-    onProfileClick: () -> Unit = {},
-    onNavigateToHome: () -> Unit = {}
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp)
-            .background(Color(0xFF010B19))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Ninja",
-                color = Color(0xFFE9E8EE),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            )
-
-            Row {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(Color(0xFFB4B1B8), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(Color(0xFFB4B1B8), CircleShape)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "o_x",
-                    color = Color(0xFFB4B1B8),
-                    fontSize = 12.sp
-                )
-            }
-        }
-
-        Text(
-            text = "Star Archive",
-            color = Color(0xFFE9E8EE),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(top = 20.dp)
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .align(Alignment.BottomCenter),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onNavigateToHome,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        Color(0xFF010B19),
-                        RoundedCornerShape(8.dp)
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = "Home",
-                    tint = Color(0xFFE9E8EE),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Row {
-                IconButton(
-                    onClick = { /* Notifications */ },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            Color(0xFF010B19),
-                            RoundedCornerShape(8.dp)
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = "Notifications",
-                        tint = Color(0xFFE9E8EE),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                IconButton(
-                    onClick = onProfileClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            Color(0xFF2196F3),
-                            RoundedCornerShape(8.dp)
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Profile",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
                 }
             }
         }
@@ -712,32 +495,5 @@ fun SongSection(
                 )
             }
         }
-    }
-}
-
-@Composable
-fun PlaylistCard(playlist: Playlist) {
-    Column(
-        modifier = Modifier
-            .width(165.dp)
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        VinylWithCover(
-            albumArt = playlist.cover,
-            isSpinning = false
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = playlist.title,
-            color = Color(0xFFE9E8EE),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
     }
 }
