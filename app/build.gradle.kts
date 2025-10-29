@@ -23,8 +23,8 @@ android {
         // 🔑 Variables de entorno para Spotify
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${getSpotifyClientId()}\"")
         buildConfigField("String", "SPOTIFY_CLIENT_SECRET", "\"${getSpotifyClientSecret()}\"")
-        // 🔑 Variable de entorno para OpenAI (defínela en gradle.properties o como -POPENAI_API_KEY)
-        buildConfigField("String", "OPENAI_API_KEY", "\"${getOpenAIKey()}\"")
+        // 🔑 Variable de entorno para Straico (defínela en gradle.properties o como -PSTRAICO_API_KEY)
+        buildConfigField("String", "STRAICO_API_KEY", "\"${getStraicoKey()}\"")
     }
 
     buildTypes {
@@ -124,7 +124,7 @@ fun getSpotifyClientSecret(): String {
     return project.findProperty("SPOTIFY_CLIENT_SECRET") as? String ?: "YOUR_SPOTIFY_CLIENT_SECRET"
 }
 
-// Helper to fetch OpenAI key from project properties (or fallback placeholder). Define OPENAI_API_KEY in gradle.properties or pass -POPENAI_API_KEY.
-fun getOpenAIKey(): String {
-    return project.findProperty("OPENAI_API_KEY") as? String ?: "YOUR_OPENAI_API_KEY"
+// Helper to fetch Straico key from project properties (or fallback placeholder). Define STRAICO_API_KEY in gradle.properties or pass -PSTRAICO_API_KEY.
+fun getStraicoKey(): String {
+    return project.findProperty("STRAICO_API_KEY") as? String ?: "YOUR_STRAICO_API_KEY"
 }

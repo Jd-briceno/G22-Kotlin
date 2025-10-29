@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.g22.orbitsoundkotlin.R
 import com.g22.orbitsoundkotlin.models.Constellation
-import com.g22.orbitsoundkotlin.ui.screens.home.OrbitSoundHeader
 import com.g22.orbitsoundkotlin.ui.screens.home.StarField
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 
@@ -59,7 +58,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
 import com.g22.orbitsoundkotlin.BuildConfig
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -69,6 +67,7 @@ import java.util.concurrent.TimeUnit
 import java.util.Date
 import java.text.SimpleDateFormat
 import java.util.Locale
+import android.util.Log
 
 @Composable
 fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
@@ -125,15 +124,36 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                 .padding(horizontal = 8.dp)
         ) {
 
-            OrbitSoundHeader(
-                title = "Constellations",
-                username = username,
-                subtitle = "Explore the celestial tapestry"
-            )
+            // OrbitSoundHeader(
+            //     title = "Constellations",
+            //     username = username,
+            //     subtitle = "Explore the celestial tapestry"
+            // )
+
+            // Removed the navigation header for this screen; keep a small spacer for layout balance
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Show most selected emotion label under the header
-            MostSelectedEmotionLabel()
+            MostSelectedEmotionLabel(onSuggestion = { suggestedEmotion ->
+                // Do not override a manual selection. Autoselect only if none chosen yet.
+                if (suggestedEmotion == null) return@MostSelectedEmotionLabel
+                if (selectedConstellation != null) return@MostSelectedEmotionLabel
 
+                when {
+                    suggestedEmotion.equals("Renewal", ignoreCase = true) -> selectedConstellation = constellations[0]
+                    suggestedEmotion.equals("Power", ignoreCase = true) -> selectedConstellation = constellations[1]
+                    suggestedEmotion.equals("Ambition", ignoreCase = true) -> selectedConstellation = constellations[2]
+                    suggestedEmotion.equals("Serenity", ignoreCase = true) -> selectedConstellation = constellations[3]
+                    suggestedEmotion.equals("Protection", ignoreCase = true) -> selectedConstellation = constellations[4]
+                    suggestedEmotion.equals("Guidance", ignoreCase = true) -> selectedConstellation = constellations[5]
+                    else -> {
+                        // try to match by id or title if Straico returned something slightly different
+                        val byId = constellations.find { it.id.equals(suggestedEmotion, ignoreCase = true) }
+                        val byTitle = constellations.find { it.title.equals(suggestedEmotion, ignoreCase = true) }
+                        selectedConstellation = byId ?: byTitle
+                    }
+                }
+            })
 
             Column(
                 modifier = Modifier
@@ -147,15 +167,15 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    ConstellationButton(drawableId = R.drawable.fenix, label = "Renewal", onClick = { selectedConstellation = constellations[0] })
-                    ConstellationButton(drawableId = R.drawable.draco, label = "Power", onClick = { selectedConstellation = constellations[1] })
+                    ConstellationButton(drawableId = R.drawable.fenix, label = "Renewal", isSelected = selectedConstellation?.id == constellations[0].id, onClick = { selectedConstellation = constellations[0] })
+                    ConstellationButton(drawableId = R.drawable.draco, label = "Power", isSelected = selectedConstellation?.id == constellations[1].id, onClick = { selectedConstellation = constellations[1] })
                 }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ){
-                    ConstellationButton(drawableId = R.drawable.pegasus, label = "Ambition", onClick = { selectedConstellation = constellations[2] })
+                    ConstellationButton(drawableId = R.drawable.pegasus, label = "Ambition", isSelected = selectedConstellation?.id == constellations[2].id, onClick = { selectedConstellation = constellations[2] })
                 }
 
 
@@ -193,14 +213,14 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    ConstellationButton(drawableId = R.drawable.cisne, label = "Serenity", onClick = { selectedConstellation = constellations[3] })
-                    ConstellationButton(drawableId = R.drawable.ursa_mayor, label = "Protection", onClick = { selectedConstellation = constellations[4] })
+                    ConstellationButton(drawableId = R.drawable.cisne, label = "Serenity", isSelected = selectedConstellation?.id == constellations[3].id, onClick = { selectedConstellation = constellations[3] })
+                    ConstellationButton(drawableId = R.drawable.ursa_mayor, label = "Protection", isSelected = selectedConstellation?.id == constellations[4].id, onClick = { selectedConstellation = constellations[4] })
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ){
-                    ConstellationButton(drawableId = R.drawable.cruz, label = "Guidance", onClick = { selectedConstellation = constellations[5] })
+                    ConstellationButton(drawableId = R.drawable.cruz, label = "Guidance", isSelected = selectedConstellation?.id == constellations[5].id, onClick = { selectedConstellation = constellations[5] })
                 }
             }
 
@@ -267,23 +287,40 @@ fun ConstellationInfo(title: String, subtitle: String, description: String) {
 
 
 @Composable
-fun ConstellationButton(drawableId: Int, label: String, onClick: () -> Unit) {
+fun ConstellationButton(drawableId: Int, label: String, isSelected: Boolean = false, onClick: () -> Unit) {
+    // Visual styles for selected vs normal
+    val borderColor = if (isSelected) Color(0xFFFF8C00) else Color.Transparent
+    val bgColor = if (isSelected) Color(0xFFFF8C00).copy(alpha = 0.12f) else Color.Transparent
+    val imageSize = if (isSelected) 92.dp else 80.dp
+    val labelColor = if (isSelected) Color(0xFFFF8C00) else Color.White
+    val labelWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clickable(onClick = onClick)
             .padding(8.dp)
+            .clickable(onClick = onClick)
     ) {
-        Image(
-            painter = painterResource(id = drawableId),
-            contentDescription = label,
-            modifier = Modifier.size(80.dp)
-        )
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(imageSize)
+                .background(bgColor, shape = RoundedCornerShape(12.dp))
+                .border(2.dp, borderColor, shape = RoundedCornerShape(12.dp))
+                .padding(8.dp)
+        ) {
+            Image(
+                painter = painterResource(id = drawableId),
+                contentDescription = label,
+                modifier = Modifier.size(imageSize - 16.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
-            color = Color.White,
-            fontSize = 14.sp
+            color = labelColor,
+            fontSize = 14.sp,
+            fontWeight = labelWeight
         )
     }
 }
@@ -316,80 +353,116 @@ fun tryParseDateString(value: Any?): Date? {
     return null
 }
 
-// --- OpenAI client helper ---
+// --- Straico API client helper ---
 private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
-suspend fun queryOpenAISuggestion(mostSelectedEmotion: String?): String? {
-    if (mostSelectedEmotion == null) return null
+suspend fun queryStraicoSuggestion(mostSelectedEmotion: String?): String? {
+    if (mostSelectedEmotion == null) {
+        Log.e("StraicoAPI", "mostSelectedEmotion is null")
+        return null
+    }
 
-    // Build request payload for Chat Completions (gpt-3.5-turbo)
-    data class Message(val role: String, val content: String)
-    data class ChatRequest(
-        val model: String,
-        val messages: List<Message>,
-        val max_tokens: Int = 40,
-        val temperature: Double = 0.7
+    // Build request payload for Straico API
+    data class StraicoRequest(
+        val models: List<String>,
+        val message: String
     )
 
-    data class Choice(@SerializedName("message") val message: Message?)
-    data class ChatResponse(val choices: List<Choice>?)
+    data class Message(
+        val content: String?
+    )
+
+    data class CompletionChoice(
+        val message: Message?
+    )
+
+    data class CompletionInfo(
+        val choices: List<CompletionChoice>?
+    )
+
+    data class CompletionData(
+        val completion: CompletionInfo?
+    )
+
+    data class StraicoResponseData(
+        val completions: Map<String, CompletionData>?
+    )
+
+    data class StraicoResponse(
+        val data: StraicoResponseData?
+    )
 
     val prompt = "The user has been selecting the emotion: '$mostSelectedEmotion' repeatedly over the last week. " +
             "Given this, suggest one concise, user-friendly desired emotion they might choose next to improve balance or wellbeing. " +
-            "Return only the single-word or short-phrase suggestion (e.g., 'Calm', 'Energized', 'Connected') without extra explanation."
+            "Return only a single-word suggestion, out of the following options: Renewal, Power, Ambition, Serenity, Protection, Guidance."
 
-    val chatReq = ChatRequest(
-        model = "gpt-3.5-turbo",
-        messages = listOf(Message("system", "You are a friendly assistant that suggests a desired emotion based on recent user emotions."), Message("user", prompt)),
-        max_tokens = 20
+    val straicoReq = StraicoRequest(
+        models = listOf("anthropic/claude-3.5-sonnet"),
+        message = prompt
     )
 
     val gson = Gson()
-    val bodyString = gson.toJson(chatReq)
+    val bodyString = gson.toJson(straicoReq)
+
+    val apiKey = BuildConfig.STRAICO_API_KEY
+    Log.d("StraicoAPI", "API Key present: ${apiKey.isNotEmpty()}")
 
     return try {
         withContext(Dispatchers.IO) {
-            // Simplified client (no logging interceptor to avoid unresolved import issues in the IDE)
             val client = OkHttpClient.Builder()
-                .readTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
                 .build()
 
             val reqBody = bodyString.toRequestBody(jsonMediaType)
             val req = Request.Builder()
-                .url("https://api.openai.com/v1/chat/completions")
-                .addHeader("Authorization", "Bearer ${BuildConfig.OPENAI_API_KEY}")
+                .url("https://api.straico.com/v1/prompt/completion")
+                .addHeader("Authorization", "Bearer $apiKey")
                 .addHeader("Content-Type", "application/json")
                 .post(reqBody)
                 .build()
 
             val resp = client.newCall(req).execute()
             try {
-                if (!resp.isSuccessful) return@withContext null
+                Log.d("StraicoAPI", "Response code: ${resp.code}")
+                if (!resp.isSuccessful) {
+                    val errorBody = resp.body?.string()
+                    Log.e("StraicoAPI", "API call failed with code ${resp.code}: $errorBody")
+                    return@withContext null
+                }
                 val respBody = resp.body?.string() ?: return@withContext null
+                Log.d("StraicoAPI", "Response body: $respBody")
                 try {
-                    val chatResp = gson.fromJson(respBody, ChatResponse::class.java)
-                    val text = chatResp.choices?.firstOrNull()?.message?.content
-                    // Trim and sanitize
-                    text?.trim()?.lines()?.firstOrNull()
-                } catch (_: Exception) {
+                    val straicoResp = gson.fromJson(respBody, StraicoResponse::class.java)
+                    // Get the first completion from the completions map
+                    val firstCompletion = straicoResp.data?.completions?.values?.firstOrNull()
+                    val text = firstCompletion?.completion?.choices?.firstOrNull()?.message?.content
+                    // Trim and sanitize - get only the first line
+                    val suggestion = text?.trim()?.lines()?.firstOrNull()
+                    Log.d("StraicoAPI", "Extracted suggestion: $suggestion")
+                    suggestion
+                } catch (e: Exception) {
+                    Log.e("StraicoAPI", "Error parsing response", e)
                     null
                 }
             } finally {
                 resp.close()
             }
         }
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.e("StraicoAPI", "Exception calling Straico API", e)
         null
     }
 }
 
 
 @Composable
-fun MostSelectedEmotionLabel() {
+fun MostSelectedEmotionLabel(onSuggestion: (String?) -> Unit = {}) {
     var mostSelected by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var suggestion by remember { mutableStateOf<String?>(null) }
     var suggestionLoading by remember { mutableStateOf(false) }
+    // ensure we only emit suggestion once to avoid reselect loops
+    var suggestionEmitted by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -436,21 +509,47 @@ fun MostSelectedEmotionLabel() {
                     mostSelected = counts.maxByOrNull { it.value }?.key
                     loading = false
 
-                    // Now call OpenAI to get a suggested desired emotion (fire-and-forget using coroutine)
+                    Log.d("ConstellationsScreen", "Most selected emotion: $mostSelected")
+                    Log.d("ConstellationsScreen", "Emotion counts: $counts")
+
+                    // Now call Straico to get a suggested desired emotion (fire-and-forget using coroutine)
                     if (mostSelected != null) {
                         suggestionLoading = true
                         scope.launch {
+                            Log.d("ConstellationsScreen", "Starting Straico query...")
                             val result = try {
-                                queryOpenAISuggestion(mostSelected)
-                            } catch (_: Exception) { null }
+                                queryStraicoSuggestion(mostSelected)
+                            } catch (e: Exception) {
+                                Log.e("ConstellationsScreen", "Error calling Straico", e)
+                                null
+                            }
+                            Log.d("ConstellationsScreen", "Straico result: $result")
                             suggestion = result
                             suggestionLoading = false
+                            // fire suggestion callback if available and not emitted yet
+                            if (!suggestionEmitted) {
+                                // prefer Straico suggestion, fallback to mostSelected
+                                onSuggestion(suggestion ?: mostSelected)
+                                suggestionEmitted = true
+                            }
                         }
+                    } else {
+                        Log.w("ConstellationsScreen", "No most selected emotion found, skipping Straico query")
                     }
                 }
                 .addOnFailureListener {
                     loading = false
                 }
+        }
+    }
+
+    // If Straico didn't return anything but we have a mostSelected after loading, emit once
+    LaunchedEffect(loading, suggestion, mostSelected) {
+        if (!loading && !suggestionEmitted) {
+            if (suggestion != null || mostSelected != null) {
+                onSuggestion(suggestion ?: mostSelected)
+                suggestionEmitted = true
+            }
         }
     }
 
