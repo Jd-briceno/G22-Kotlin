@@ -23,6 +23,8 @@ android {
         // 🔑 Variables de entorno para Spotify
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${getSpotifyClientId()}\"")
         buildConfigField("String", "SPOTIFY_CLIENT_SECRET", "\"${getSpotifyClientSecret()}\"")
+        // 🔑 Variable de entorno para OpenAI (defínela en gradle.properties o como -POPENAI_API_KEY)
+        buildConfigField("String", "OPENAI_API_KEY", "\"${getOpenAIKey()}\"")
     }
 
     buildTypes {
@@ -81,6 +83,10 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
+    // Add OkHttp for calling the OpenAI API
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
     // 🔥 Firebase con BOM
     implementation(platform(libs.firebase.bom))
     implementation("com.google.firebase:firebase-auth")
@@ -116,4 +122,9 @@ fun getSpotifyClientId(): String {
 
 fun getSpotifyClientSecret(): String {
     return project.findProperty("SPOTIFY_CLIENT_SECRET") as? String ?: "YOUR_SPOTIFY_CLIENT_SECRET"
+}
+
+// Helper to fetch OpenAI key from project properties (or fallback placeholder). Define OPENAI_API_KEY in gradle.properties or pass -POPENAI_API_KEY.
+fun getOpenAIKey(): String {
+    return project.findProperty("OPENAI_API_KEY") as? String ?: "YOUR_OPENAI_API_KEY"
 }

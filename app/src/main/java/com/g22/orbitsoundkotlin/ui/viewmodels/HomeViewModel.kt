@@ -1,4 +1,4 @@
-package com.g22.orbitsoundkotlin.ui.screens.home
+package com.g22.orbitsoundkotlin.ui.viewmodels
 
 import android.content.Context
 import android.location.Location
@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 private val DefaultStarColors = listOf(Color.White)
 
@@ -219,7 +221,7 @@ object WeatherService {
     private suspend fun fetchFromApi(lat: Double, lon: Double): Weather = withContext(Dispatchers.IO) {
         val endpoint =
             "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current_weather=true&timezone=auto&temperature_unit=celsius"
-        val connection = java.net.URL(endpoint).openConnection() as java.net.HttpURLConnection
+        val connection = URL(endpoint).openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = 4000
             connection.readTimeout = 4000

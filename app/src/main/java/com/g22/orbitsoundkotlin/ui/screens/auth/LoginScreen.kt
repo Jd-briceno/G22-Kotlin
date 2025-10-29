@@ -55,6 +55,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.g22.orbitsoundkotlin.R
 import com.g22.orbitsoundkotlin.ui.theme.EncodeSansExpanded
 import com.g22.orbitsoundkotlin.ui.theme.RobotoMono
+import com.g22.orbitsoundkotlin.ui.viewmodels.AuthViewModel
 
 @Composable
 fun LoginScreen(

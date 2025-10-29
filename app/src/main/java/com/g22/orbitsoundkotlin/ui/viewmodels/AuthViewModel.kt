@@ -1,4 +1,4 @@
-package com.g22.orbitsoundkotlin.ui.screens.auth
+package com.g22.orbitsoundkotlin.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel(
     // Usa la abstracción y por defecto inyecta el Singleton explícito (GoF)
-    private val service: IAuthService = AuthService.getInstance()
+    private val service: IAuthService = AuthService.Companion.getInstance()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
