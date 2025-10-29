@@ -118,7 +118,7 @@ fun LibraryScreen(
                         SongResultCard(
                             song = song,
                             onClick = {
-                                // 📊 Analytics: Track con posición y query
+                                // 📊 Analytics: Track with position and query
                                 viewModel.selectTrackFromSearch(
                                     track = song,
                                     position = index,
@@ -164,7 +164,7 @@ fun LibraryScreen(
                         subtitle = section.section.subtitle,
                         songs = section.tracks,
                         onSongClick = { track ->
-                            // 📊 Analytics: Track con sección
+                            // 📊 Analytics: Track with section
                             viewModel.selectTrackFromSection(track, sectionPosition = 1)
                         }
                     )
@@ -178,7 +178,7 @@ fun LibraryScreen(
                         subtitle = section.section.subtitle,
                         songs = section.tracks,
                         onSongClick = { track ->
-                            // 📊 Analytics: Track con sección
+                            // 📊 Analytics: Track with section
                             viewModel.selectTrackFromSection(track, sectionPosition = 2)
                         }
                     )
@@ -192,7 +192,7 @@ fun LibraryScreen(
                         subtitle = section.section.subtitle,
                         songs = section.tracks,
                         onSongClick = { track ->
-                            // 📊 Analytics: Track con sección
+                            // 📊 Analytics: Track with section
                             viewModel.selectTrackFromSection(track, sectionPosition = 3)
                         }
                     )
@@ -206,7 +206,7 @@ fun LibraryScreen(
                         subtitle = section.section.subtitle,
                         songs = section.tracks,
                         onSongClick = { track ->
-                            // 📊 Analytics: Track con sección
+                            // 📊 Analytics: Track with section
                             viewModel.selectTrackFromSection(track, sectionPosition = 4)
                         }
                     )

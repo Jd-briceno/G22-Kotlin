@@ -5,19 +5,19 @@ import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics
 
 /**
- * Servicio centralizado para analytics de música y comportamiento del usuario.
+ * Centralized service for music and user behavior analytics.
  * 
- * IMPORTANTE: Activar en Firebase Console:
- * - Analytics → Events → Ver todos los eventos personalizados
- * - Analytics → DebugView → Ver eventos en tiempo real durante desarrollo
+ * IMPORTANT: Enable in Firebase Console:
+ * - Analytics → Events → View all custom events
+ * - Analytics → DebugView → View events in real-time during development
  */
 object MusicAnalytics {
     
     private var analyticsInstance: FirebaseAnalytics? = null
     
     /**
-     * Inicializa el servicio de analytics.
-     * Debe ser llamado desde MainActivity o Application.
+     * Initializes the analytics service.
+     * Must be called from MainActivity or Application.
      */
     fun initialize(context: Context) {
         if (analyticsInstance == null) {
@@ -27,21 +27,21 @@ object MusicAnalytics {
     
     private val analytics: FirebaseAnalytics
         get() = analyticsInstance ?: throw IllegalStateException(
-            "MusicAnalytics no ha sido inicializado. Llama a MusicAnalytics.initialize(context) primero."
+            "MusicAnalytics has not been initialized. Call MusicAnalytics.initialize(context) first."
         )
     
     // ═══════════════════════════════════════════════════════════
-    // SECCIONES DE LIBRARY - Engagement por Recomendación
+    // LIBRARY SECTIONS - Engagement by Recommendation
     // ═══════════════════════════════════════════════════════════
     
     /**
-     * Registra cuando un usuario hace click en una canción de una sección.
+     * Tracks when a user clicks on a track from a section.
      * 
-     * @param sectionTitle Título de la sección (ej: "Morning Orbit", "Pegasus Flight")
-     * @param sectionType Tipo de recomendación ("time", "constellation", "emotion", "default")
-     * @param trackTitle Título de la canción
-     * @param trackArtist Artista de la canción
-     * @param sectionPosition Posición de la sección (1-4)
+     * @param sectionTitle Section title (e.g., "Morning Orbit", "Pegasus Flight")
+     * @param sectionType Recommendation type ("time", "constellation", "emotion", "default")
+     * @param trackTitle Track title
+     * @param trackArtist Track artist
+     * @param sectionPosition Section position (1-4)
      */
     fun trackSectionClick(
         sectionTitle: String,
@@ -61,12 +61,12 @@ object MusicAnalytics {
     }
     
     /**
-     * Registra cuando una sección se carga exitosamente con canciones.
+     * Tracks when a section loads successfully with tracks.
      * 
-     * @param sectionTitle Título de la sección
-     * @param sectionType Tipo de recomendación
-     * @param trackCount Número de canciones obtenidas
-     * @param query Query usado para buscar en Spotify
+     * @param sectionTitle Section title
+     * @param sectionType Recommendation type
+     * @param trackCount Number of tracks obtained
+     * @param query Query used to search in Spotify
      */
     fun trackSectionLoaded(
         sectionTitle: String,
@@ -84,7 +84,7 @@ object MusicAnalytics {
     }
     
     /**
-     * Registra cuando una sección falla al cargar.
+     * Tracks when a section fails to load.
      */
     fun trackSectionError(
         sectionTitle: String,
@@ -100,14 +100,14 @@ object MusicAnalytics {
     }
     
     // ═══════════════════════════════════════════════════════════
-    // BÚSQUEDA - Patrones de uso
+    // SEARCH - Usage Patterns
     // ═══════════════════════════════════════════════════════════
     
     /**
-     * Registra cuando un usuario realiza una búsqueda.
+     * Tracks when a user performs a search.
      * 
-     * @param query Texto buscado
-     * @param resultCount Número de resultados obtenidos
+     * @param query Search text
+     * @param resultCount Number of results obtained
      */
     fun trackSearch(query: String, resultCount: Int) {
         val params = Bundle().apply {
@@ -118,7 +118,7 @@ object MusicAnalytics {
     }
     
     /**
-     * Registra cuando un usuario hace click en un resultado de búsqueda.
+     * Tracks when a user clicks on a search result.
      */
     fun trackSearchResultClick(
         query: String,
@@ -136,16 +136,16 @@ object MusicAnalytics {
     }
     
     // ═══════════════════════════════════════════════════════════
-    // RECOMENDACIONES - Efectividad del Motor
+    // RECOMMENDATIONS - Engine Effectiveness
     // ═══════════════════════════════════════════════════════════
     
     /**
-     * Registra qué contexto del usuario generó las recomendaciones.
+     * Tracks what user context generated the recommendations.
      * 
-     * @param hasConstellations Si el usuario tiene constelaciones guardadas
-     * @param hasEmotions Si el usuario tiene emociones recientes
-     * @param constellationCount Número de constelaciones
-     * @param emotionCount Número de emociones recientes
+     * @param hasConstellations Whether the user has saved constellations
+     * @param hasEmotions Whether the user has recent emotions
+     * @param constellationCount Number of constellations
+     * @param emotionCount Number of recent emotions
      * @param timeOfDay "morning", "afternoon", "evening", "night"
      */
     fun trackRecommendationContext(
@@ -166,18 +166,18 @@ object MusicAnalytics {
     }
     
     // ═══════════════════════════════════════════════════════════
-    // NAVEGACIÓN - Flujo del usuario
+    // NAVIGATION - User Flow
     // ═══════════════════════════════════════════════════════════
     
     /**
-     * Registra cuando el usuario entra a LibraryScreen.
+     * Tracks when the user enters LibraryScreen.
      */
     fun trackLibraryScreenView() {
         analytics.logEvent("library_screen_view", null)
     }
     
     /**
-     * Registra cuando el usuario abre el modal de detalle de una canción.
+     * Tracks when the user opens the track detail modal.
      */
     fun trackTrackDetailView(trackTitle: String, trackArtist: String) {
         val params = Bundle().apply {

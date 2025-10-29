@@ -25,15 +25,15 @@ class LibraryViewModel(
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
     
     init {
-        Log.d("LibraryViewModel", "Inicializando LibraryViewModel")
-        // 📊 Analytics: Usuario entró a LibraryScreen
+        Log.d("LibraryViewModel", "Initializing LibraryViewModel")
+        // 📊 Analytics: User entered LibraryScreen
         MusicAnalytics.trackLibraryScreenView()
         loadPersonalizedPlaylists()
     }
     
     /**
-     * Actualiza las recomendaciones basadas en constelaciones y emociones del usuario.
-     * Puede ser llamado cuando el usuario actualice sus preferencias.
+     * Updates recommendations based on user's constellations and emotions.
+     * Can be called when the user updates their preferences.
      */
     fun refreshRecommendations(
         userConstellations: List<Constellation> = emptyList(),
@@ -45,14 +45,14 @@ class LibraryViewModel(
     fun searchTracks(query: String) {
         if (query.isEmpty()) return
         
-        Log.d("LibraryViewModel", "Buscando tracks: $query")
+        Log.d("LibraryViewModel", "Searching tracks: $query")
         viewModelScope.launch {
             _uiState.update { it.copy(searchLoading = true) }
             try {
                 val tracks = spotifyService.searchTracks(query)
-                Log.d("LibraryViewModel", "Tracks encontrados: ${tracks.size}")
+                Log.d("LibraryViewModel", "Tracks found: ${tracks.size}")
                 
-                // 📊 Analytics: Registrar búsqueda
+                // 📊 Analytics: Track search
                 MusicAnalytics.trackSearch(query, tracks.size)
                 
                 _uiState.update { it.copy(
@@ -61,7 +61,7 @@ class LibraryViewModel(
                     lastSearchQuery = query
                 )}
             } catch (e: Exception) {
-                Log.e("LibraryViewModel", "Error buscando tracks", e)
+                Log.e("LibraryViewModel", "Error searching tracks", e)
                 _uiState.update { it.copy(
                     searchLoading = false,
                     error = e.message
@@ -71,8 +71,8 @@ class LibraryViewModel(
     }
     
     /**
-     * Selecciona un track desde una sección de recomendaciones.
-     * 📊 Rastrea en Analytics de qué sección proviene el click.
+     * Selects a track from a recommendation section.
+     * 📊 Tracks in Analytics which section the click came from.
      */
     fun selectTrackFromSection(
         track: Track,
@@ -87,10 +87,10 @@ class LibraryViewModel(
         }
         
         sectionData?.let { data ->
-            // Determinar tipo de sección
+            // Determine section type
             val sectionType = determineSectionType(data.section.title)
             
-            // 📊 Analytics: Registrar click en sección
+            // 📊 Analytics: Track section click
             MusicAnalytics.trackSectionClick(
                 sectionTitle = data.section.title,
                 sectionType = sectionType,
@@ -99,7 +99,7 @@ class LibraryViewModel(
                 sectionPosition = sectionPosition
             )
             
-            // 📊 Analytics: Registrar vista de detalle
+            // 📊 Analytics: Track detail view
             MusicAnalytics.trackTrackDetailView(track.title, track.artist)
         }
         
@@ -107,11 +107,11 @@ class LibraryViewModel(
     }
     
     /**
-     * Selecciona un track desde resultados de búsqueda.
-     * 📊 Rastrea en Analytics el click en resultado de búsqueda.
+     * Selects a track from search results.
+     * 📊 Tracks in Analytics the click on search result.
      */
     fun selectTrackFromSearch(track: Track, position: Int, query: String) {
-        // 📊 Analytics: Registrar click en resultado de búsqueda
+        // 📊 Analytics: Track search result click
         MusicAnalytics.trackSearchResultClick(
             query = query,
             trackTitle = track.title,
@@ -119,14 +119,14 @@ class LibraryViewModel(
             resultPosition = position
         )
         
-        // 📊 Analytics: Registrar vista de detalle
+        // 📊 Analytics: Track detail view
         MusicAnalytics.trackTrackDetailView(track.title, track.artist)
         
         _uiState.update { it.copy(selectedTrack = track) }
     }
     
     /**
-     * Determina el tipo de sección basado en su título.
+     * Determines the section type based on its title.
      */
     private fun determineSectionType(title: String): String {
         return when {
@@ -140,7 +140,7 @@ class LibraryViewModel(
             title.contains("Saturn", ignoreCase = true) ||
             title.contains("Starlight", ignoreCase = true) -> "default"
             
-            // Constelaciones
+            // Constellations
             title.contains("Cisne", ignoreCase = true) ||
             title.contains("Pegasus", ignoreCase = true) ||
             title.contains("Draco", ignoreCase = true) ||
@@ -148,7 +148,7 @@ class LibraryViewModel(
             title.contains("Cross", ignoreCase = true) ||
             title.contains("Phoenix", ignoreCase = true) -> "constellation"
             
-            // Emociones
+            // Emotions
             title.contains("Joyful", ignoreCase = true) ||
             title.contains("Melancholy", ignoreCase = true) ||
             title.contains("Volcanic", ignoreCase = true) ||
@@ -169,28 +169,28 @@ class LibraryViewModel(
     }
     
     /**
-     * Carga playlists personalizadas usando el motor de recomendaciones.
+     * Loads personalized playlists using the recommendation engine.
      */
     private fun loadPersonalizedPlaylists(
         userConstellations: List<Constellation> = emptyList(),
         recentEmotions: List<EmotionModel> = emptyList()
     ) {
-        Log.d("LibraryViewModel", "Cargando playlists personalizadas...")
-        Log.d("LibraryViewModel", "Constelaciones: ${userConstellations.size}, Emociones: ${recentEmotions.size}")
+        Log.d("LibraryViewModel", "Loading personalized playlists...")
+        Log.d("LibraryViewModel", "Constellations: ${userConstellations.size}, Emotions: ${recentEmotions.size}")
         
         viewModelScope.launch {
             _uiState.update { it.copy(playlistsLoading = true) }
             try {
-                // Generar secciones personalizadas
+                // Generate personalized sections
                 val sections = MusicRecommendationEngine.generatePlaylistSections(
                     userConstellations = userConstellations,
                     recentEmotions = recentEmotions
                 )
                 
-                Log.d("LibraryViewModel", "Secciones generadas: ${sections.joinToString { it.title }}")
-                Log.d("LibraryViewModel", "Iniciando búsquedas paralelas")
+                Log.d("LibraryViewModel", "Sections generated: ${sections.joinToString { it.title }}")
+                Log.d("LibraryViewModel", "Starting parallel searches")
                 
-                // 📊 Analytics: Registrar contexto de recomendaciones
+                // 📊 Analytics: Track recommendation context
                 val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
                 val timeOfDay = when (hour) {
                     in 5..11 -> "morning"
@@ -207,7 +207,7 @@ class LibraryViewModel(
                     timeOfDay = timeOfDay
                 )
                 
-                // Cargar tracks para cada sección en paralelo
+                // Load tracks for each section in parallel
                 val section1Deferred = async { 
                     spotifyService.searchTracks(sections[0].query)
                 }
@@ -226,9 +226,9 @@ class LibraryViewModel(
                 val section3Songs = section3Deferred.await()
                 val section4Songs = section4Deferred.await()
                 
-                Log.d("LibraryViewModel", "Playlists cargadas: ${section1Songs.size}, ${section2Songs.size}, ${section3Songs.size}, ${section4Songs.size}")
+                Log.d("LibraryViewModel", "Playlists loaded: ${section1Songs.size}, ${section2Songs.size}, ${section3Songs.size}, ${section4Songs.size}")
                 
-                // 📊 Analytics: Registrar cada sección cargada
+                // 📊 Analytics: Track each loaded section
                 listOf(
                     Triple(sections[0], section1Songs, 1),
                     Triple(sections[1], section2Songs, 2),
@@ -252,7 +252,7 @@ class LibraryViewModel(
                     playlistsLoading = false
                 )}
             } catch (e: Exception) {
-                Log.e("LibraryViewModel", "Error cargando playlists personalizadas", e)
+                Log.e("LibraryViewModel", "Error loading personalized playlists", e)
                 _uiState.update { it.copy(
                     playlistsLoading = false,
                     error = e.message
@@ -262,7 +262,7 @@ class LibraryViewModel(
     }
     
     /**
-     * Data class que combina información de la sección con sus tracks.
+     * Data class that combines section information with its tracks.
      */
     data class PlaylistSectionData(
         val section: MusicRecommendationEngine.PlaylistSection,
@@ -270,26 +270,26 @@ class LibraryViewModel(
     )
     
     /**
-     * Estado de la UI de LibraryScreen.
+     * UI state for LibraryScreen.
      */
     data class LibraryUiState(
-        // Búsqueda
+        // Search
         val searchResults: List<Track> = emptyList(),
         val searchLoading: Boolean = false,
-        val lastSearchQuery: String = "", // Para analytics
+        val lastSearchQuery: String = "", // For analytics
         
-        // Secciones personalizadas de playlists
+        // Personalized playlist sections
         val section1: PlaylistSectionData? = null,
         val section2: PlaylistSectionData? = null,
         val section3: PlaylistSectionData? = null,
         val section4: PlaylistSectionData? = null,
         
-        // Estado general
+        // General state
         val playlistsLoading: Boolean = false,
         val selectedTrack: Track? = null,
         val error: String? = null
     ) {
-        // Propiedades de compatibilidad con código legacy (LibraryScreen)
+        // Legacy compatibility properties (LibraryScreen)
         @Deprecated("Use section1.tracks instead", ReplaceWith("section1?.tracks ?: emptyList()"))
         val starlightSongs: List<Track> get() = section1?.tracks ?: emptyList()
         
