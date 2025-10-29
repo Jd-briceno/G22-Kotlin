@@ -17,18 +17,26 @@ class SpotifyTrackMapper : Mapper<Map<String, Any?>, Track> {
         Log.d(TAG, "Mapeando track: ${input["name"]}")
         
         return try {
+            val title = extractTitle(input)
+            val artist = extractArtist(input)
+            val duration = formatDuration(input)
+            val durationMs = extractDurationMs(input)
+            val albumArt = extractAlbumArt(input)
+            
+            Log.d(TAG, "Datos extraídos - Title: '$title', Artist: '$artist', Duration: $duration")
+            
             Track(
-                title = extractTitle(input),
-                artist = extractArtist(input),
-                duration = formatDuration(input),
-                durationMs = extractDurationMs(input),
-                albumArt = extractAlbumArt(input),
+                title = title,
+                artist = artist,
+                duration = duration,
+                durationMs = durationMs,
+                albumArt = albumArt,
                 previewUrl = input["preview_url"] as? String
             ).also {
-                Log.d(TAG, "Track mapeado exitosamente: ${it.title} - ${it.artist}")
+                Log.d(TAG, "✅ Track final: '${it.title}' por '${it.artist}' (${it.duration})")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error mapeando track", e)
+            Log.e(TAG, "❌ Error mapeando track", e)
             throw e
         }
     }
