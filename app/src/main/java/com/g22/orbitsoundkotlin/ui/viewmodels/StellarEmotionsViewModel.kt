@@ -1,9 +1,12 @@
 package com.g22.orbitsoundkotlin.ui.viewmodels
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.data.EmotionRepository
+import com.g22.orbitsoundkotlin.data.FacialEmotionAnalyzer
 import com.g22.orbitsoundkotlin.data.FirestoreEmotionRepository
 import com.g22.orbitsoundkotlin.models.EmotionModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -16,7 +19,8 @@ import kotlinx.coroutines.launch
 
 class StellarEmotionsViewModel(
     private val userId: String,
-    private val repository: EmotionRepository = FirestoreEmotionRepository()
+    private val repository: EmotionRepository = FirestoreEmotionRepository(),
+    private val context: Context? = null
 ) : ViewModel() {
     private val TAG = "StellarEmotionsViewModel"
 
@@ -25,6 +29,51 @@ class StellarEmotionsViewModel(
 
     private val _event = MutableSharedFlow<Event>()
     val event: SharedFlow<Event> = _event.asSharedFlow()
+
+    private val _capturedPhotoUri = MutableStateFlow<Uri?>(null)
+    val capturedPhotoUri: StateFlow<Uri?> = _capturedPhotoUri.asStateFlow()
+
+    private val _isAnalyzingEmotion = MutableStateFlow(false)
+    val isAnalyzingEmotion: StateFlow<Boolean> = _isAnalyzingEmotion.asStateFlow()
+
+    fun onPhotoCaptured(uri: Uri) {
+        Log.d(TAG, "Photo captured: $uri")
+        _capturedPhotoUri.value = uri
+        // Analyze the emotion immediately
+        analyzeEmotionFromPhoto(uri)
+    }
+
+    private fun analyzeEmotionFromPhoto(uri: Uri) {
+        if (context == null) {
+            Log.e(TAG, "Context is null, cannot analyze emotion")
+            viewModelScope.launch {
+                _event.emit(Event.ShowError("Unable to analyze emotion: context not available"))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _isAnalyzingEmotion.value = true
+            try {
+                Log.d(TAG, "Starting emotion analysis...")
+                val analyzer = FacialEmotionAnalyzer(context)
+                val detectedEmotion = analyzer.analyzeEmotion(uri)
+
+                if (detectedEmotion != null) {
+                    Log.d(TAG, "Emotion detected: $detectedEmotion")
+                    _event.emit(Event.EmotionDetected(detectedEmotion))
+                } else {
+                    Log.e(TAG, "Failed to detect emotion")
+                    _event.emit(Event.ShowError("Could not detect emotion from the image. Please try again."))
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception during emotion analysis", e)
+                _event.emit(Event.ShowError("Error analyzing emotion: ${e.message}"))
+            } finally {
+                _isAnalyzingEmotion.value = false
+            }
+        }
+    }
 
     fun onReadyToShipClicked(selectedEmotions: List<EmotionModel>) {
         Log.d(TAG, "Ready to ship clicked with ${selectedEmotions.size} emotions")
@@ -82,6 +131,7 @@ class StellarEmotionsViewModel(
 
     sealed class Event {
         data class ShowError(val message: String) : Event()
+        data class EmotionDetected(val emotion: String) : Event()
         object NavigateNext : Event()
     }
 }

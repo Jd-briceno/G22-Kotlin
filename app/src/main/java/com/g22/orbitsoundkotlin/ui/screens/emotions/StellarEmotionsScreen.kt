@@ -52,6 +52,17 @@ import com.g22.orbitsoundkotlin.R
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.atan2
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import android.net.Uri
 
 private val containerBorderColor = Color.White.copy(alpha = 0.4f)
 private val containerShape = RoundedCornerShape(16.dp)
@@ -207,6 +218,74 @@ fun StellarEmotionsScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val isAnalyzingEmotion by viewModel.isAnalyzingEmotion.collectAsState()
+
+    // Estado para almacenar la URI de la foto temporal
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Función para crear un archivo temporal para la foto
+    fun createImageFile(): File {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = File(context.getExternalFilesDir(null), "Pictures")
+        if (!storageDir.exists()) {
+            storageDir.mkdirs()
+        }
+        return File(storageDir, "EMOTION_${timeStamp}.jpg")
+    }
+
+    // Launcher para tomar la foto
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val uri = photoUri
+        if (success && uri != null) {
+            viewModel.onPhotoCaptured(uri)
+            Toast.makeText(context, "Photo captured successfully!", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Failed to capture photo", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Launcher para solicitar permiso de cámara
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permiso concedido, abrir cámara
+            val imageFile = createImageFile()
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                imageFile
+            )
+            photoUri = uri
+            takePictureLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Camera permission is required", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Función para manejar el clic del botón de cámara
+    fun onCameraButtonClick() {
+        val permission = Manifest.permission.CAMERA
+        when {
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED -> {
+                // Permiso ya concedido
+                val imageFile = createImageFile()
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    imageFile
+                )
+                photoUri = uri
+                takePictureLauncher.launch(uri)
+            }
+            else -> {
+                // Solicitar permiso
+                cameraPermissionLauncher.launch(permission)
+            }
+        }
+    }
 
     LaunchedEffect(key1 = Unit) {
         viewModel.event.collect { event ->
@@ -217,6 +296,10 @@ fun StellarEmotionsScreen(
                 is StellarEmotionsViewModel.Event.NavigateNext -> {
                     // Navigate when the ViewModel tells us to
                     onNavigateToConstellations()
+                }
+                is StellarEmotionsViewModel.Event.EmotionDetected -> {
+                    // Show detected emotion in a Toast
+                    Toast.makeText(context, "Emotion detected: ${event.emotion}", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -387,6 +470,38 @@ fun StellarEmotionsScreen(
                             updateSelectedEmotionsAndLast(newEmotion, hasInteractedWithKnob2)
                         }
                     )
+
+                    // Camera button
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Button(
+                            onClick = { onCameraButtonClick() },
+                            shape = CircleShape,
+                            modifier = Modifier.size(80.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = containerBorderColor
+                            ),
+                            enabled = !isAnalyzingEmotion
+                        ) {
+                            if (isAnalyzingEmotion) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.camera),
+                                    contentDescription = "Camera",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Column(
@@ -691,9 +806,9 @@ fun ColumnScope.VolumeSlider(
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                Text(text = "Joy", color = accentYellow, modifier = Modifier.align(Alignment.TopEnd))
+                Text(text = "Joy", color = accentYellow, modifier = Modifier.align(Alignment.TopEnd).padding(top = 220.dp))
                 Text(text = "Sadness", color = Color.White, modifier = Modifier.align(Alignment.CenterEnd))
-                Text(text = "Fear", color = Color.White, modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 32.dp))
+                Text(text = "Fear", color = Color.White, modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 220.dp))
             }
         }
         Text(
