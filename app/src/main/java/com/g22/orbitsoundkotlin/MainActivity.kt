@@ -337,8 +337,9 @@ private fun OrbitSoundApp() {
                 }
             }
             is AppDestination.StellarEmotions -> {
+                val context = LocalContext.current
                 val viewModel = remember {
-                    StellarEmotionsViewModel(userId = current.user.id)
+                    StellarEmotionsViewModel(userId = current.user.id, context = context)
                 }
                 StellarEmotionsScreen(
                     username = current.user.email?.split("@")?.firstOrNull() ?: "Captain",
