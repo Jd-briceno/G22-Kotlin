@@ -190,10 +190,15 @@ class SpotifyService private constructor() {
                 val items = jsonResponse.getAsJsonArray("items")
 
                 val tracks = mutableListOf<Track>()
-                items?.forEach { item ->
+                items?.forEachIndexed { index, item ->
                     val trackObj = item.asJsonObject.getAsJsonObject("track")
                     if (trackObj != null && trackObj.get("id") != null) {
-                        val track = trackMapper.map(trackObj.asMap())
+                        val trackMap = trackObj.asMap()
+                        if (index == 0) {
+                            Log.d(TAG, "Playlist Track 0 - Map keys: ${trackMap.keys}")
+                            Log.d(TAG, "Playlist Track 0 - 'name': ${trackMap["name"]}")
+                        }
+                        val track = trackMapper.map(trackMap)
                         if (track.title.isNotEmpty()) {
                             tracks.add(track)
                         }
@@ -249,7 +254,12 @@ class SpotifyService private constructor() {
                     try {
                         val trackObj = item.asJsonObject
                         if (trackObj.get("id") != null) {
-                            val track = trackMapper.map(trackObj.asMap())
+                            val trackMap = trackObj.asMap()
+                            Log.d(TAG, "Track $index - Map keys: ${trackMap.keys}")
+                            Log.d(TAG, "Track $index - 'name' value: ${trackMap["name"]}")
+                            Log.d(TAG, "Track $index - 'artists' value: ${trackMap["artists"]}")
+                            
+                            val track = trackMapper.map(trackMap)
                             tracks.add(track)
                             Log.d(TAG, "Track $index parseado: ${track.title} - ${track.artist}")
                         } else {
