@@ -4,7 +4,7 @@
 
 - ✅ library/ - LibraryScreen migrado a MVVM
 - ✅ profile/ - ProfileScreen migrado a MVVM
-- ✅ stellaremotions/ - Ya usa MVVM (StellarEmotionsViewModel en raíz del proyecto)
+- ✅ stellaremotions/ - Ya usa MVVM (com.g22.orbitsoundkotlin.ui.viewmodels.StellarEmotionsViewModel en raíz del proyecto)
 - ⏳ auth/ - Pendiente migración (LoginScreen, SignupScreen, InterestSelectionScreen)
 - ⏳ home/ - Pendiente migración (HomeScreen - ViewModel existe pero necesita refactor)
 - ⏳ constellations/ - Pendiente migración
@@ -22,7 +22,7 @@ Estos archivos permanecen en `ui/screens/` hasta su migración:
 - GenreSelectorScreen.kt
 - StellarEmotionsScreen.kt
 
-`StellarEmotionsViewModel.kt` está en la raíz del proyecto.
+`com.g22.orbitsoundkotlin.ui.viewmodels.StellarEmotionsViewModel.kt` está en la raíz del proyecto.
 
 ## Patrón para nuevas migraciones
 
@@ -141,7 +141,7 @@ fun FeatureScreen(
 
 **Sprint 4:**
 - Refactorizar HomeViewModel (ya existe pero necesita mejoras)
-- Mover StellarEmotionsViewModel y Screen a stellaremotions/
+- Mover com.g22.orbitsoundkotlin.ui.viewmodels.StellarEmotionsViewModel y Screen a stellaremotions/
 - MainViewModel para navegación
 - Simplificar MainActivity
 

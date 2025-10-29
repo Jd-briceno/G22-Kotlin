@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.g22.orbitsoundkotlin.models.Track
 import com.g22.orbitsoundkotlin.ui.screens.home.OrbitNavbar
+import com.g22.orbitsoundkotlin.ui.viewmodels.ProfileViewModel
 
 @Composable
 fun ProfileScreen(

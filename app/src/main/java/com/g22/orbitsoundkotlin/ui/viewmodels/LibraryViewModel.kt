@@ -1,4 +1,4 @@
-package com.g22.orbitsoundkotlin.ui.screens.library
+package com.g22.orbitsoundkotlin.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,19 +12,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class LibraryViewModel(
-    private val spotifyService: SpotifyService = SpotifyService.getInstance()
+    private val spotifyService: SpotifyService = SpotifyService.Companion.getInstance()
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
-    
+
     init {
         loadPlaylists()
     }
-    
+
     fun searchTracks(query: String) {
         if (query.isEmpty()) return
-        
+
         viewModelScope.launch {
             _uiState.update { it.copy(searchLoading = true) }
             try {
@@ -41,15 +41,15 @@ class LibraryViewModel(
             }
         }
     }
-    
+
     fun selectTrack(track: Track) {
         _uiState.update { it.copy(selectedTrack = track) }
     }
-    
+
     fun dismissTrackDetail() {
         _uiState.update { it.copy(selectedTrack = null) }
     }
-    
+
     private fun loadPlaylists() {
         viewModelScope.launch {
             _uiState.update { it.copy(playlistsLoading = true) }
@@ -58,7 +58,7 @@ class LibraryViewModel(
                 val djNovaDeferred = async { spotifyService.searchTracks("electronic dance music") }
                 val eternalHitsDeferred = async { spotifyService.searchTracks("rock music") }
                 val orbitCrewDeferred = async { spotifyService.searchTracks("pop hits") }
-                
+
                 _uiState.update { it.copy(
                     starlightSongs = starlightDeferred.await(),
                     djNovaSongs = djNovaDeferred.await(),
@@ -78,13 +78,13 @@ class LibraryViewModel(
             }
         }
     }
-    
+
     private fun getFallbackTracks() = listOf(
         Track("Lofi Study", "Chill Beats", "3:45", 225000, ""),
         Track("Peaceful Morning", "Ambient Sounds", "4:12", 252000, ""),
         Track("Coffee Shop Vibes", "Relaxing Music", "3:30", 210000, "")
     )
-    
+
     data class LibraryUiState(
         val searchResults: List<Track> = emptyList(),
         val searchLoading: Boolean = false,
@@ -97,4 +97,3 @@ class LibraryViewModel(
         val error: String? = null
     )
 }
-

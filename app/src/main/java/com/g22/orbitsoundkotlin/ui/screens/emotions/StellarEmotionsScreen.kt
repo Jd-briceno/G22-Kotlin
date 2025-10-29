@@ -1,6 +1,6 @@
-package com.g22.orbitsoundkotlin.ui.screens
+package com.g22.orbitsoundkotlin.ui.screens.emotions
 
-import StellarEmotionsViewModel
+import com.g22.orbitsoundkotlin.ui.viewmodels.StellarEmotionsViewModel
 import android.widget.Toast
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
