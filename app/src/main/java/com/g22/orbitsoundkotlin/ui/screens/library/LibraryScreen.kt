@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -74,6 +75,26 @@ fun LibraryScreen(
             Spacer(modifier = Modifier.height(5.dp))
         }
 
+        // Mostrar mensaje de error si existe
+        uiState.error?.let { errorMessage ->
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .background(Color(0xFFFF5252).copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                        .border(1.dp, Color(0xFFFF5252), RoundedCornerShape(8.dp))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "⚠️ Error: $errorMessage",
+                        color = Color(0xFFFFCDD2),
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+
         if (uiState.searchLoading) {
             item {
                 Box(
@@ -94,11 +115,16 @@ fun LibraryScreen(
                 LazyRow(
                     modifier = Modifier.height(180.dp)
                 ) {
-                    items(uiState.searchResults) { song ->
+                    itemsIndexed(uiState.searchResults) { index, song ->
                         SongResultCard(
                             song = song,
                             onClick = {
-                                viewModel.selectTrack(song)
+                                // 📊 Analytics: Track with position and query
+                                viewModel.selectTrackFromSearch(
+                                    track = song,
+                                    position = index,
+                                    query = uiState.lastSearchQuery
+                                )
                             }
                         )
                     }
@@ -131,36 +157,61 @@ fun LibraryScreen(
                 }
             }
         } else {
-            item {
-                SongSection(
-                    title = "✨ Starlight Suggestions",
-                    songs = uiState.starlightSongs,
-                    onSongClick = viewModel::selectTrack
-                )
+            // Secciones dinámicas de playlists
+            uiState.section1?.let { section ->
+                item {
+                    SongSection(
+                        title = section.section.title,
+                        subtitle = section.section.subtitle,
+                        songs = section.tracks,
+                        onSongClick = { track ->
+                            // 📊 Analytics: Track with section
+                            viewModel.selectTrackFromSection(track, sectionPosition = 1)
+                        }
+                    )
+                }
             }
 
-            item {
-                SongSection(
-                    title = "🎧 DJ Nova's Set",
-                    songs = uiState.djNovaSongs,
-                    onSongClick = viewModel::selectTrack
-                )
+            uiState.section2?.let { section ->
+                item {
+                    SongSection(
+                        title = section.section.title,
+                        subtitle = section.section.subtitle,
+                        songs = section.tracks,
+                        onSongClick = { track ->
+                            // 📊 Analytics: Track with section
+                            viewModel.selectTrackFromSection(track, sectionPosition = 2)
+                        }
+                    )
+                }
             }
 
-            item {
-                SongSection(
-                    title = "💖 Eternal Hits",
-                    songs = uiState.eternalHitsSongs,
-                    onSongClick = viewModel::selectTrack
-                )
+            uiState.section3?.let { section ->
+                item {
+                    SongSection(
+                        title = section.section.title,
+                        subtitle = section.section.subtitle,
+                        songs = section.tracks,
+                        onSongClick = { track ->
+                            // 📊 Analytics: Track with section
+                            viewModel.selectTrackFromSection(track, sectionPosition = 3)
+                        }
+                    )
+                }
             }
 
-            item {
-                SongSection(
-                    title = "🎧 Orbit Crew Playlist",
-                    songs = uiState.orbitCrewSongs,
-                    onSongClick = viewModel::selectTrack
-                )
+            uiState.section4?.let { section ->
+                item {
+                    SongSection(
+                        title = section.section.title,
+                        subtitle = section.section.subtitle,
+                        songs = section.tracks,
+                        onSongClick = { track ->
+                            // 📊 Analytics: Track with section
+                            viewModel.selectTrackFromSection(track, sectionPosition = 4)
+                        }
+                    )
+                }
             }
         }
 
@@ -475,7 +526,8 @@ fun SongResultCard(
 fun SongSection(
     title: String,
     songs: List<Track>,
-    onSongClick: (Track) -> Unit
+    onSongClick: (Track) -> Unit,
+    subtitle: String? = null
 ) {
     Column {
         Text(
@@ -483,8 +535,17 @@ fun SongSection(
             color = Color(0xFFE9E8EE),
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
         )
+        
+        subtitle?.let {
+            Text(
+                text = it,
+                color = Color(0xFFB4B1B8),
+                fontSize = 14.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
 
         LazyRow(
             modifier = Modifier.height(180.dp)
