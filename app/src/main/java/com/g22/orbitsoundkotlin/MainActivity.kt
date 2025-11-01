@@ -1,6 +1,6 @@
 package com.g22.orbitsoundkotlin
 
-import StellarEmotionsViewModel
+import com.g22.orbitsoundkotlin.ui.viewmodels.StellarEmotionsViewModel
 import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -32,6 +32,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.launch
+import com.g22.orbitsoundkotlin.analytics.MusicAnalytics
 import com.g22.orbitsoundkotlin.services.AuthResult
 import com.g22.orbitsoundkotlin.services.AuthService
 import com.g22.orbitsoundkotlin.services.AuthUser
@@ -42,13 +43,13 @@ import com.g22.orbitsoundkotlin.ui.screens.home.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
 import com.g22.orbitsoundkotlin.ui.screens.library.LibraryScreen
 import com.g22.orbitsoundkotlin.ui.screens.auth.AuthScreenCallbacks
-import com.g22.orbitsoundkotlin.ui.screens.auth.AuthViewModel
+import com.g22.orbitsoundkotlin.ui.viewmodels.AuthViewModel
 import com.g22.orbitsoundkotlin.ui.screens.auth.LocalAuthScreenCallbacks
 import com.g22.orbitsoundkotlin.ui.screens.auth.LoginScreen
 import com.g22.orbitsoundkotlin.ui.screens.auth.SignupScreen
 import com.g22.orbitsoundkotlin.ui.screens.profile.ProfileScreen
-import com.g22.orbitsoundkotlin.ui.screens.StellarEmotionsScreen
-import com.g22.orbitsoundkotlin.ui.screens.ConstellationsScreen
+import com.g22.orbitsoundkotlin.ui.screens.emotions.StellarEmotionsScreen
+import com.g22.orbitsoundkotlin.ui.screens.emotions.ConstellationsScreen
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 
 class MainActivity : ComponentActivity() {
@@ -56,6 +57,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         FirebaseApp.initializeApp(this)
+        
+        // 📊 Inicializar Analytics
+        MusicAnalytics.initialize(this)
+        
         setContent {
             OrbitSoundKotlinTheme {
                 OrbitSoundApp()
@@ -332,8 +337,9 @@ private fun OrbitSoundApp() {
                 }
             }
             is AppDestination.StellarEmotions -> {
+                val context = LocalContext.current
                 val viewModel = remember {
-                    StellarEmotionsViewModel(userId = current.user.id)
+                    StellarEmotionsViewModel(userId = current.user.id, context = context)
                 }
                 StellarEmotionsScreen(
                     username = current.user.email?.split("@")?.firstOrNull() ?: "Captain",

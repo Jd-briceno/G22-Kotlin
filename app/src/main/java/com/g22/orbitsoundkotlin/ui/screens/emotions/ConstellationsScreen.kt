@@ -1,4 +1,4 @@
-package com.g22.orbitsoundkotlin.ui.screens
+package com.g22.orbitsoundkotlin.ui.screens.emotions
 
 import android.widget.Toast
 import androidx.compose.animation.core.LinearEasing
@@ -29,10 +29,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,14 +42,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.g22.orbitsoundkotlin.R
 import com.g22.orbitsoundkotlin.models.Constellation
-import com.g22.orbitsoundkotlin.ui.screens.home.OrbitSoundHeader
 import com.g22.orbitsoundkotlin.ui.screens.home.StarField
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
+import com.g22.orbitsoundkotlin.ui.viewmodels.ConstellationsViewModel
 
 @Composable
-fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
+@Suppress("UNUSED_PARAMETER")
+fun ConstellationsScreen(
+    username: String,
+    onNavigateToHome: () -> Unit = {},
+    viewModel: ConstellationsViewModel = viewModel()
+) {
 
     val infiniteTransition = rememberInfiniteTransition(label = "star_field_transition")
     val globalTime by infiniteTransition.animateFloat(
@@ -71,19 +76,33 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
 
     val containerBorderColor = Color.White.copy(alpha = 0.5f)
 
-    val constellations = remember {
-        listOf(
-            Constellation("fenix", "Phoenix", "From my own ashes, I carry the fire that will guide me home.", "Renewal, courage after loss, and embracing change.", R.drawable.fenix),
-            Constellation("draco", "Draco", "My power is ancient, a force of nature that commands respect.", "Wisdom, authority, and untamed strength.", R.drawable.draco),
-            Constellation("pegasus", "Pegasus", "With wings of starlight, I soar towards my highest aspirations.", "Inspiration, creativity, and boundless ambition.", R.drawable.pegasus),
-            Constellation("cisne", "Cygnus", "In stillness, I find my grace and the quiet strength to glide on.", "Peace, elegance, and profound serenity.", R.drawable.cisne),
-            Constellation("ursa_mayor", "Ursa Major", "I am the steadfast guardian, a shield against the darkness.", "Strength, family, and unwavering protection.", R.drawable.ursa_mayor),
-            Constellation("cruz", "Crux", "My light is a beacon, a fixed point in the ever-changing cosmos.", "Faith, direction, and unerring guidance.", R.drawable.cruz)
-        )
-    }
+    val constellations = listOf(
+        Constellation("fenix", "Phoenix", "From my own ashes, I carry the fire that will guide me home.", "Renewal, courage after loss, and embracing change.", R.drawable.fenix),
+        Constellation("draco", "Draco", "My power is ancient, a force of nature that commands respect.", "Wisdom, authority, and untamed strength.", R.drawable.draco),
+        Constellation("pegasus", "Pegasus", "With wings of starlight, I soar towards my highest aspirations.", "Inspiration, creativity, and boundless ambition.", R.drawable.pegasus),
+        Constellation("cisne", "Cygnus", "In stillness, I find my grace and the quiet strength to glide on.", "Peace, elegance, and profound serenity.", R.drawable.cisne),
+        Constellation("ursa_mayor", "Ursa Major", "I am the steadfast guardian, a shield against the darkness.", "Strength, family, and unwavering protection.", R.drawable.ursa_mayor),
+        Constellation("cruz", "Crux", "My light is a beacon, a fixed point in the ever-changing cosmos.", "Faith, direction, and unerring guidance.", R.drawable.cruz)
+    )
 
-    var selectedConstellation by remember { mutableStateOf<Constellation?>(null) }
+    // Collect state from ViewModel
+    val selectedConstellation by viewModel.selectedConstellation.collectAsState()
+    val suggestion by viewModel.suggestion.collectAsState()
     val context = LocalContext.current
+
+    // Auto-select constellation based on AI suggestion
+    LaunchedEffect(suggestion) {
+        if (suggestion != null && selectedConstellation == null) {
+            val autoSelected = viewModel.autoSelectFromSuggestion(constellations)
+            if (autoSelected != null) {
+                Toast.makeText(
+                    context,
+                    "${autoSelected.title} has been autoselected, but feel free to change it",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -104,12 +123,17 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                 .padding(horizontal = 8.dp)
         ) {
 
-            OrbitSoundHeader(
-                title = "Constellations",
-                username = username,
-                subtitle = "Explore the celestial tapestry"
-            )
+            // OrbitSoundHeader(
+            //     title = "Constellations",
+            //     username = username,
+            //     subtitle = "Explore the celestial tapestry"
+            // )
 
+            // Removed the navigation header for this screen; keep a small spacer for layout balance
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Show most selected emotion label under the header
+            MostSelectedEmotionLabel(viewModel = viewModel)
 
             Column(
                 modifier = Modifier
@@ -123,15 +147,15 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    ConstellationButton(drawableId = R.drawable.fenix, label = "Renewal", onClick = { selectedConstellation = constellations[0] })
-                    ConstellationButton(drawableId = R.drawable.draco, label = "Power", onClick = { selectedConstellation = constellations[1] })
+                    ConstellationButton(drawableId = R.drawable.fenix, label = "Renewal", isSelected = selectedConstellation?.id == constellations[0].id, onClick = { viewModel.selectConstellation(constellations[0]) })
+                    ConstellationButton(drawableId = R.drawable.draco, label = "Power", isSelected = selectedConstellation?.id == constellations[1].id, onClick = { viewModel.selectConstellation(constellations[1]) })
                 }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ){
-                    ConstellationButton(drawableId = R.drawable.pegasus, label = "Ambition", onClick = { selectedConstellation = constellations[2] })
+                    ConstellationButton(drawableId = R.drawable.pegasus, label = "Ambition", isSelected = selectedConstellation?.id == constellations[2].id, onClick = { viewModel.selectConstellation(constellations[2]) })
                 }
 
 
@@ -169,14 +193,14 @@ fun ConstellationsScreen(username: String, onNavigateToHome: () -> Unit = {}) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    ConstellationButton(drawableId = R.drawable.cisne, label = "Serenity", onClick = { selectedConstellation = constellations[3] })
-                    ConstellationButton(drawableId = R.drawable.ursa_mayor, label = "Protection", onClick = { selectedConstellation = constellations[4] })
+                    ConstellationButton(drawableId = R.drawable.cisne, label = "Serenity", isSelected = selectedConstellation?.id == constellations[3].id, onClick = { viewModel.selectConstellation(constellations[3]) })
+                    ConstellationButton(drawableId = R.drawable.ursa_mayor, label = "Protection", isSelected = selectedConstellation?.id == constellations[4].id, onClick = { viewModel.selectConstellation(constellations[4]) })
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ){
-                    ConstellationButton(drawableId = R.drawable.cruz, label = "Guidance", onClick = { selectedConstellation = constellations[5] })
+                    ConstellationButton(drawableId = R.drawable.cruz, label = "Guidance", isSelected = selectedConstellation?.id == constellations[5].id, onClick = { viewModel.selectConstellation(constellations[5]) })
                 }
             }
 
@@ -243,24 +267,85 @@ fun ConstellationInfo(title: String, subtitle: String, description: String) {
 
 
 @Composable
-fun ConstellationButton(drawableId: Int, label: String, onClick: () -> Unit) {
+fun ConstellationButton(drawableId: Int, label: String, isSelected: Boolean = false, onClick: () -> Unit) {
+    // Visual styles for selected vs normal
+    val borderColor = if (isSelected) Color(0xFFFF8C00) else Color.Transparent
+    val bgColor = if (isSelected) Color(0xFFFF8C00).copy(alpha = 0.12f) else Color.Transparent
+    val imageSize = if (isSelected) 92.dp else 80.dp
+    val labelColor = if (isSelected) Color(0xFFFF8C00) else Color.White
+    val labelWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clickable(onClick = onClick)
             .padding(8.dp)
+            .clickable(onClick = onClick)
     ) {
-        Image(
-            painter = painterResource(id = drawableId),
-            contentDescription = label,
-            modifier = Modifier.size(80.dp)
-        )
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(imageSize)
+                .background(bgColor, shape = RoundedCornerShape(12.dp))
+                .border(2.dp, borderColor, shape = RoundedCornerShape(12.dp))
+                .padding(8.dp)
+        ) {
+            Image(
+                painter = painterResource(id = drawableId),
+                contentDescription = label,
+                modifier = Modifier.size(imageSize - 16.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
-            color = Color.White,
-            fontSize = 14.sp
+            color = labelColor,
+            fontSize = 14.sp,
+            fontWeight = labelWeight
         )
+    }
+}
+
+@Composable
+fun MostSelectedEmotionLabel(viewModel: ConstellationsViewModel) {
+    val mostSelected by viewModel.mostSelectedEmotion.collectAsState()
+    val loading by viewModel.isLoading.collectAsState()
+    val suggestion by viewModel.suggestion.collectAsState()
+    val suggestionLoading by viewModel.suggestionLoading.collectAsState()
+
+    // Visual container centered horizontally
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                .background(Color(0xFF071125).copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+        ) {
+            if (loading) {
+                Text(text = "Loading most selected emotion...", color = Color.White, fontSize = 14.sp)
+            } else {
+                val label = mostSelected ?: "None"
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Your most selected emotion in this week: $label",
+                        color = Color.White.copy(alpha = 0.95f),
+                        fontSize = 14.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    when {
+                        suggestionLoading -> Text(text = "Thinking...", color = Color(0xFFB4C6FF), fontSize = 12.sp)
+                        suggestion != null -> Text(text = "Suggested emotion: ${suggestion!!}", color = Color(0xFFB4C6FF), fontSize = 12.sp)
+                        else -> Text(text = "No suggestion available", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                    }
+                }
+            }
+        }
     }
 }
 

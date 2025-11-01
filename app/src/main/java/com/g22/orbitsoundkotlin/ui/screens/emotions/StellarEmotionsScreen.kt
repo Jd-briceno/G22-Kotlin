@@ -1,6 +1,6 @@
-package com.g22.orbitsoundkotlin.ui.screens
+package com.g22.orbitsoundkotlin.ui.screens.emotions
 
-import StellarEmotionsViewModel
+import com.g22.orbitsoundkotlin.ui.viewmodels.StellarEmotionsViewModel
 import android.widget.Toast
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -44,13 +44,25 @@ import kotlin.math.sin
 import com.g22.orbitsoundkotlin.models.EmotionModel
 import com.g22.orbitsoundkotlin.models.EmotionControlState
 import com.g22.orbitsoundkotlin.models.SliderEmotionControlState
-import androidx.compose.foundation.clickable
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlin.math.roundToInt
 import com.g22.orbitsoundkotlin.R
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.atan2
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import android.net.Uri
 
 private val containerBorderColor = Color.White.copy(alpha = 0.4f)
 private val containerShape = RoundedCornerShape(16.dp)
@@ -146,35 +158,44 @@ fun getEmotionFromKnobAngle(
     angle: Float,
     emotionLabels: List<String>
 ): EmotionModel {
-
-    var normalizedAngle = (angle + 45f) % 360
+    // Normalize angle to 0-360 range
+    var normalizedAngle = angle % 360f
     if (normalizedAngle < 0) normalizedAngle += 360f
 
-    val sectorSize = 270f / emotionLabels.size
+    // Divide full 360° into 4 equal sectors (90° each) corresponding to the corners.
+    // Angles: 0 = top, 90 = right, 180 = bottom, 270 = left
+    // Sector mapping (in the same order the UI passes emotions):
+    // 0..90 -> emotionLabels[0] (top-right / between top and right)
+    // 90..180 -> emotionLabels[1] (bottom-right)
+    // 180..270 -> emotionLabels[2] (bottom-left)
+    // 270..360 -> emotionLabels[3] (top-left)
 
-    return when {
-        normalizedAngle in 0f..sectorSize -> anxietyKnobEmotions[emotionLabels[0]]!!
+    val sectorSize = 360f / emotionLabels.size // should be 90f for 4 emotions
+    val sectorIndex = (normalizedAngle / sectorSize).toInt().coerceIn(0, emotionLabels.size - 1)
 
-        normalizedAngle in sectorSize..sectorSize * 2 -> anxietyKnobEmotions[emotionLabels[3]]!!
-
-        normalizedAngle in sectorSize * 2..sectorSize * 3 -> anxietyKnobEmotions[emotionLabels[2]]!!
-
-        else -> anxietyKnobEmotions[emotionLabels[1]]!!
-    }
+    return anxietyKnobEmotions[emotionLabels[sectorIndex]]!!
 }
 
 fun getEmotionFromKnob2Angle(
     angle: Float
 ): EmotionModel {
-    var normalizedAngle = (angle + 45f) % 360
+    // Normalize angle to 0-360 range
+    var normalizedAngle = angle % 360f
     if (normalizedAngle < 0) normalizedAngle += 360f
-    val sectorSize = 180f / 3
-    return when (angle.roundToInt()) {
-        -45 -> anxietyKnobEmotions["Embarrassment"]!!
-        45 -> anxietyKnobEmotions["Embarrassment"]!!
-        135 -> anxietyKnobEmotions["Love"]!!
-        225 -> anxietyKnobEmotions["Boredom"]!!
-        else -> anxietyKnobEmotions["Embarrassment"]!!
+
+    // Map to 0-180 range (45° to 225°, which is 3 emotions)
+    val adjustedAngle = when {
+        normalizedAngle >= 315f || normalizedAngle < 45f -> 0f  // Default to first emotion
+        normalizedAngle >= 225f -> 180f  // Last sector
+        else -> normalizedAngle - 45f
+    }
+
+    val sectorSize = 180f / 3  // 60 degrees per emotion
+
+    return when {
+        adjustedAngle < sectorSize -> anxietyKnobEmotions["Embarrassment"]!!
+        adjustedAngle < sectorSize * 2 -> anxietyKnobEmotions["Love"]!!
+        else -> anxietyKnobEmotions["Boredom"]!!
     }
 }
 
@@ -197,6 +218,74 @@ fun StellarEmotionsScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val isAnalyzingEmotion by viewModel.isAnalyzingEmotion.collectAsState()
+
+    // Estado para almacenar la URI de la foto temporal
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Función para crear un archivo temporal para la foto
+    fun createImageFile(): File {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = File(context.getExternalFilesDir(null), "Pictures")
+        if (!storageDir.exists()) {
+            storageDir.mkdirs()
+        }
+        return File(storageDir, "EMOTION_${timeStamp}.jpg")
+    }
+
+    // Launcher para tomar la foto
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val uri = photoUri
+        if (success && uri != null) {
+            viewModel.onPhotoCaptured(uri)
+            Toast.makeText(context, "Photo captured successfully!", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Failed to capture photo", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Launcher para solicitar permiso de cámara
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permiso concedido, abrir cámara
+            val imageFile = createImageFile()
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                imageFile
+            )
+            photoUri = uri
+            takePictureLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Camera permission is required", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Función para manejar el clic del botón de cámara
+    fun onCameraButtonClick() {
+        val permission = Manifest.permission.CAMERA
+        when {
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED -> {
+                // Permiso ya concedido
+                val imageFile = createImageFile()
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    imageFile
+                )
+                photoUri = uri
+                takePictureLauncher.launch(uri)
+            }
+            else -> {
+                // Solicitar permiso
+                cameraPermissionLauncher.launch(permission)
+            }
+        }
+    }
 
     LaunchedEffect(key1 = Unit) {
         viewModel.event.collect { event ->
@@ -207,6 +296,10 @@ fun StellarEmotionsScreen(
                 is StellarEmotionsViewModel.Event.NavigateNext -> {
                     // Navigate when the ViewModel tells us to
                     onNavigateToConstellations()
+                }
+                is StellarEmotionsViewModel.Event.EmotionDetected -> {
+                    // Show detected emotion in a Toast
+                    Toast.makeText(context, "Emotion detected: ${event.emotion}", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -328,7 +421,7 @@ fun StellarEmotionsScreen(
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
 
                     EmotionDisplay(
@@ -341,10 +434,10 @@ fun StellarEmotionsScreen(
 
 
                     EmotionKnob(
-                        labelTop = "Anxiety",
-                        labelBottom = "Anger",
-                        labelLeft = "Disgust",
-                        labelRight = "Envy",
+                        labelTop = "Envy",
+                        labelBottom = "Disgust",
+                        labelLeft = "Anger",
+                        labelRight = "Anxiety",
                         knobColor = if (hasInteractedWithKnob1) knob1State.selectedEmotion.color else knob1State.selectedEmotion.color.copy(alpha = 0.5f),
                         initialAngle = knob1State.angle,
                         onAngleChange = { newAngle ->
@@ -377,9 +470,45 @@ fun StellarEmotionsScreen(
                             updateSelectedEmotionsAndLast(newEmotion, hasInteractedWithKnob2)
                         }
                     )
+
+                    // Camera button
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Button(
+                            onClick = { onCameraButtonClick() },
+                            shape = CircleShape,
+                            modifier = Modifier.size(80.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = containerBorderColor
+                            ),
+                            enabled = !isAnalyzingEmotion
+                        ) {
+                            if (isAnalyzingEmotion) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.camera),
+                                    contentDescription = "Camera",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
 
                     VolumeSlider(
                         sliderPosition = sliderState.value,
@@ -410,7 +539,7 @@ fun StellarEmotionsScreen(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp, horizontal = 8.dp)
+                    .padding(vertical = 12.dp, horizontal = 8.dp)
                     .border(1.dp, containerBorderColor, RoundedCornerShape(12.dp)),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Transparent
@@ -433,8 +562,8 @@ fun EmotionDisplay(currentEmotion: EmotionModel) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(150.dp)
-            .padding(16.dp),
+            .height(100.dp)
+            .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -442,16 +571,17 @@ fun EmotionDisplay(currentEmotion: EmotionModel) {
             painter = painterResource(id = currentEmotion.iconRes),
             contentDescription = currentEmotion.name,
             tint = currentEmotion.color,
-            modifier = Modifier.size(64.dp)
+            modifier = Modifier.size(48.dp)
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
 
         Text(
             text = currentEmotion.description,
             color = currentEmotion.color,
             textAlign = TextAlign.Center,
-            lineHeight = 16.sp
+            lineHeight = 14.sp,
+            fontSize = 12.sp
         )
     }
 }
@@ -461,9 +591,9 @@ fun EmotionList(selectedEmotions: List<EmotionModel>) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(50.dp)
             .border(1.dp, containerBorderColor, containerShape)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -475,14 +605,15 @@ fun EmotionList(selectedEmotions: List<EmotionModel>) {
                     painter = painterResource(id = emotion.iconRes),
                     contentDescription = emotion.name,
                     tint = emotion.color,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(28.dp)
                 )
             }
         } else {
 
             Text(
                 text = "No emotions selected",
-                color = Color.White.copy(alpha = 0.7f)
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 12.sp
             )
         }
     }
@@ -498,73 +629,93 @@ fun EmotionKnob(
     knobColor: Color,
     initialAngle: Float,
     knobRadius: Dp = 50.dp,
-
     onAngleChange: ((Float) -> Unit)? = null
 ) {
+    var currentRotation by remember { mutableStateOf(initialAngle) }
 
-    val currentRotation = remember(initialAngle) { mutableStateOf(initialAngle) }
-
-    val onKnobClick = {
-        if (onAngleChange != null) {
-
-            val newAngle = when (currentRotation.value.roundToInt()) {
-                -45 -> 45f
-                45 -> 135f
-                135 -> 225f
-                else -> -45f
-            }
-            currentRotation.value = newAngle
-            onAngleChange.invoke(newAngle)
-        }
+    // Update rotation when initialAngle changes
+    LaunchedEffect(initialAngle) {
+        currentRotation = initialAngle
     }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 16.dp),
+            .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-
+        // Labels
         Text(text = labelTop, color = Color.White, modifier = Modifier.align(Alignment.TopStart))
-        Text(text = labelLeft, color = Color.White, modifier = Modifier.align(Alignment.BottomStart).padding(top = knobRadius * 2 + 24.dp))
+        Text(text = labelLeft, color = Color.White, modifier = Modifier
+            .align(Alignment.BottomStart)
+            .padding(top = knobRadius * 2 + 24.dp))
         labelRight?.let {
             Text(text = it, color = Color.White, modifier = Modifier.align(Alignment.TopEnd))
         }
         Text(
             text = labelBottom,
             color = Color.White,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(top = knobRadius * 2 + 24.dp)
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(top = knobRadius * 2 + 24.dp)
         )
 
-
+        // Knob with drag gesture
         Box(
             modifier = Modifier
                 .size(knobRadius * 2)
                 .padding(top = 24.dp)
-                .clickable(enabled = onAngleChange != null, onClick = onKnobClick),
+                .pointerInput(Unit) {
+                    if (onAngleChange != null) {
+                        detectDragGestures { change, _ ->
+                            change.consume()
+
+                            val center = Offset(size.width / 2f, size.height / 2f)
+                            val touchPos = change.position
+
+                            // Calculate angle from center to touch position
+                            val dx = touchPos.x - center.x
+                            val dy = touchPos.y - center.y
+                            var angle = Math
+                                .toDegrees(atan2(dy.toDouble(), dx.toDouble()))
+                                .toFloat() + 90f
+
+                            // Normalize to 0-360
+                            if (angle < 0) angle += 360f
+
+                            // Allow full 0-360° range so corners (esquinas) are correctly detected
+                            currentRotation = angle
+                            onAngleChange(angle)
+                        }
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
-
+            // Tick marks
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val center = this.center
                 val radius = size.minDimension / 2.0f
                 for (i in 0 until 16) {
                     val angle = (i / 16f) * 360f
-                    if (angle < 45 || angle > 315) continue
+                    // Draw ticks around full circle (no skipping)
+                    // If you prefer to skip top area, reintroduce a condition here.
+                    // Keep them continuous so the 4 corner sectors are visually represented.
+                    // if (angle < 45 || angle > 315) continue
                     val x = center.x + radius * cos(Math.toRadians(angle.toDouble() - 90)).toFloat()
                     val y = center.y + radius * sin(Math.toRadians(angle.toDouble() - 90)).toFloat()
                     drawCircle(color = Color.White, radius = 4f, center = Offset(x, y))
                 }
             }
 
+            // Rotating knob
             Box(
                 modifier = Modifier
                     .fillMaxSize(0.8f)
                     .clip(CircleShape)
                     .background(knobColor)
-                    .rotate(currentRotation.value)
+                    .rotate(currentRotation)
             ) {
-
+                // Indicator line
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -591,15 +742,18 @@ fun ColumnScope.VolumeSlider(
             .weight(1f)
             .fillMaxHeight()
             .border(1.dp, containerBorderColor, containerShape)
-            .padding(horizontal = 16.dp, vertical = 24.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
+
+
+        BoxWithConstraints(
             modifier = Modifier
-                .fillMaxHeight()
+                .fillMaxWidth()
                 .weight(1f)
-                .padding(horizontal = 16.dp)
         ) {
+            val containerHeight = maxHeight
+            val containerWidth = maxWidth
 
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val tickCount = 20
@@ -623,12 +777,17 @@ fun ColumnScope.VolumeSlider(
                 }
             }
 
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
                 Slider(
                     value = sliderPosition,
                     onValueChange = onValueChange,
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .width(containerHeight * 1.95f)
+                        .height(containerWidth * 1.8f)
                         .rotate(-90f),
                     colors = SliderDefaults.colors(
                         thumbColor = selectedEmotion.color,
@@ -647,16 +806,16 @@ fun ColumnScope.VolumeSlider(
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                Text(text = "Joy", color = accentYellow, modifier = Modifier.align(Alignment.TopEnd))
+                Text(text = "Joy", color = accentYellow, modifier = Modifier.align(Alignment.TopEnd).padding(top = 220.dp))
                 Text(text = "Sadness", color = Color.White, modifier = Modifier.align(Alignment.CenterEnd))
-                Text(text = "Fear", color = Color.White, modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 32.dp))
+                Text(text = "Fear", color = Color.White, modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 220.dp))
             }
         }
         Text(
-            text = "Volume",
+            text = "Emotion",
             color = Color.White,
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier.padding(bottom = 4.dp)
         )
     }
 }

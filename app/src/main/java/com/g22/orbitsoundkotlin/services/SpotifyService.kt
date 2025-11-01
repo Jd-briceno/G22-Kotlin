@@ -1,6 +1,7 @@
 package com.g22.orbitsoundkotlin.services
 
 import android.util.Base64
+import android.util.Log
 import com.g22.orbitsoundkotlin.BuildConfig
 import com.g22.orbitsoundkotlin.models.Track
 import com.g22.orbitsoundkotlin.models.Playlist
@@ -22,6 +23,28 @@ class SpotifyService private constructor() {
     private val clientSecret = BuildConfig.SPOTIFY_CLIENT_SECRET
     private val gson = Gson()
     private val trackMapper = SpotifyTrackMapper()
+    
+    init {
+        Log.d(TAG, "SpotifyService inicializado (Singleton)")
+        Log.d(TAG, "Client ID configurado: ${if (clientId.isNotEmpty()) "Sí" else "NO - FALTA CONFIGURAR"}")
+    }
+    
+    companion object {
+        private const val TAG = "SpotifyService"
+        
+        @Volatile
+        private var instance: SpotifyService? = null
+        
+        /**
+         * Obtiene la instancia única de SpotifyService (Singleton).
+         * Thread-safe usando double-checked locking.
+         */
+        fun getInstance(): SpotifyService {
+            return instance ?: synchronized(this) {
+                instance ?: SpotifyService().also { instance = it }
+            }
+        }
+    }
     
     // Caché de token para evitar solicitudes innecesarias
     @Volatile
@@ -50,9 +73,11 @@ class SpotifyService private constructor() {
         // Reutilizar token en caché si aún es válido
         val currentTime = System.currentTimeMillis()
         if (cachedToken != null && currentTime < tokenExpiry) {
+            Log.d(TAG, "Usando token en caché")
             return@withContext cachedToken
         }
         
+        Log.d(TAG, "Solicitando nuevo token de acceso...")
         try {
             val credentials = Base64.encodeToString(
                 "$clientId:$clientSecret".toByteArray(),
@@ -71,6 +96,7 @@ class SpotifyService private constructor() {
             connection.outputStream.use { it.write(postData.toByteArray()) }
 
             val responseCode = connection.responseCode
+            Log.d(TAG, "Response code del token: $responseCode")
             
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
@@ -81,11 +107,15 @@ class SpotifyService private constructor() {
                 cachedToken = token
                 tokenExpiry = currentTime + 3600000 // 1 hora
                 
+                Log.d(TAG, "Token obtenido exitosamente")
                 token
             } else {
+                val errorBody = connection.errorStream?.bufferedReader()?.readText() ?: "Sin detalles"
+                Log.e(TAG, "Error obteniendo token: $responseCode - $errorBody")
                 null
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Excepción obteniendo token", e)
             null
         }
     }
@@ -163,7 +193,7 @@ class SpotifyService private constructor() {
                 items?.forEach { item ->
                     val trackObj = item.asJsonObject.getAsJsonObject("track")
                     if (trackObj != null && trackObj.get("id") != null) {
-                        val track = trackMapper.map(trackObj.asMap())
+                        val track = trackMapper.map(trackObj)
                         if (track.title.isNotEmpty()) {
                             tracks.add(track)
                         }
@@ -181,14 +211,20 @@ class SpotifyService private constructor() {
     }
 
     suspend fun searchTracks(query: String, market: String = "US"): List<Track> = withContext(Dispatchers.IO) {
+        Log.d(TAG, "searchTracks llamado con query: '$query'")
+        
         val token = getAccessToken()
         if (token == null) {
+            Log.e(TAG, "No se pudo obtener token de acceso")
             return@withContext emptyList()
         }
 
         try {
             val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
-            val url = URL("https://api.spotify.com/v1/search?q=$encodedQuery&type=track&limit=15&market=$market")
+            val apiUrl = "https://api.spotify.com/v1/search?q=$encodedQuery&type=track&limit=15&market=$market"
+            Log.d(TAG, "URL de búsqueda: $apiUrl")
+            
+            val url = URL(apiUrl)
             val connection = url.openConnection() as HttpURLConnection
 
             connection.requestMethod = "GET"
@@ -196,29 +232,47 @@ class SpotifyService private constructor() {
             connection.setRequestProperty("Content-Type", "application/json")
 
             val responseCode = connection.responseCode
+            Log.d(TAG, "Response code de búsqueda: $responseCode")
 
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().readText()
+                Log.d(TAG, "Respuesta recibida, tamaño: ${response.length} caracteres")
+                
                 val jsonResponse = gson.fromJson(response, JsonObject::class.java)
                 val tracksData = jsonResponse.getAsJsonObject("tracks")
                 val items = tracksData?.getAsJsonArray("items")
+                
+                Log.d(TAG, "Items encontrados en respuesta: ${items?.size() ?: 0}")
 
                 val tracks = mutableListOf<Track>()
-                items?.forEach { item ->
-                    val trackObj = item.asJsonObject
-                    if (trackObj.get("id") != null) {
-                        val track = trackMapper.map(trackObj.asMap())
-                        tracks.add(track)
+                items?.forEachIndexed { index, item ->
+                    try {
+                        val trackObj = item.asJsonObject
+                        if (trackObj.get("id") != null) {
+                            val track = trackMapper.map(trackObj)
+                            tracks.add(track)
+                        } else {
+                            Log.w(TAG, "Track $index sin ID, omitido")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ Error parseando track $index", e)
                     }
                 }
+                
+                Log.d(TAG, "Total de tracks parseados exitosamente: ${tracks.size}")
                 tracks
             } else {
+                val errorBody = connection.errorStream?.bufferedReader()?.readText() ?: "Sin detalles"
+                Log.e(TAG, "Error en búsqueda: $responseCode - $errorBody")
+                
                 if (responseCode == 400 && query.isNotEmpty()) {
+                    Log.d(TAG, "Intentando búsqueda simplificada...")
                     return@withContext searchTracks(query.split(" ").first(), market)
                 }
                 emptyList()
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Excepción en searchTracks", e)
             emptyList()
         }
     }
@@ -321,54 +375,4 @@ class SpotifyService private constructor() {
 
         playlists
     }
-    
-    companion object {
-        @Volatile
-        private var instance: SpotifyService? = null
-        
-        /**
-         * Obtiene la instancia única de SpotifyService (Singleton).
-         * Thread-safe usando double-checked locking.
-         */
-        fun getInstance(): SpotifyService {
-            return instance ?: synchronized(this) {
-                instance ?: SpotifyService().also { instance = it }
-            }
-        }
-    }
-}
-
-private fun JsonObject.asMap(): Map<String, Any?> {
-    val map = mutableMapOf<String, Any?>()
-    this.entrySet().forEach { entry ->
-        when (val value = entry.value) {
-            is com.google.gson.JsonPrimitive -> {
-                map[entry.key] = when {
-                    value.isString -> value.asString
-                    value.isNumber -> value.asNumber
-                    value.isBoolean -> value.asBoolean
-                    else -> value.asString
-                }
-            }
-            is com.google.gson.JsonObject -> map[entry.key] = value.asMap()
-            is com.google.gson.JsonArray -> {
-                map[entry.key] = value.map { element ->
-                    when (element) {
-                        is com.google.gson.JsonPrimitive -> {
-                            when {
-                                element.isString -> element.asString
-                                element.isNumber -> element.asNumber
-                                element.isBoolean -> element.asBoolean
-                                else -> element.asString
-                            }
-                        }
-                        is com.google.gson.JsonObject -> element.asMap()
-                        else -> element.toString()
-                    }
-                }
-            }
-            else -> map[entry.key] = value.toString()
-        }
-    }
-    return map
 }
