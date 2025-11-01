@@ -23,6 +23,8 @@ android {
         // 🔑 Variables de entorno para Spotify
         buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"${getSpotifyClientId()}\"")
         buildConfigField("String", "SPOTIFY_CLIENT_SECRET", "\"${getSpotifyClientSecret()}\"")
+        // 🔑 Variable de entorno para Straico (defínela en gradle.properties o como -PSTRAICO_API_KEY)
+        buildConfigField("String", "STRAICO_API_KEY", "\"${getStraicoKey()}\"")
     }
 
     buildTypes {
@@ -81,6 +83,21 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
+    // Room Database
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Security Crypto (for encrypted session cache)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Add OkHttp for calling the OpenAI API
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
     // 🔥 Firebase con BOM
     implementation(platform(libs.firebase.bom))
     implementation("com.google.firebase:firebase-auth")
@@ -116,4 +133,9 @@ fun getSpotifyClientId(): String {
 
 fun getSpotifyClientSecret(): String {
     return project.findProperty("SPOTIFY_CLIENT_SECRET") as? String ?: "YOUR_SPOTIFY_CLIENT_SECRET"
+}
+
+// Helper to fetch Straico key from project properties (or fallback placeholder). Define STRAICO_API_KEY in gradle.properties or pass -PSTRAICO_API_KEY.
+fun getStraicoKey(): String {
+    return project.findProperty("STRAICO_API_KEY") as? String ?: "YOUR_STRAICO_API_KEY"
 }
