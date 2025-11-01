@@ -31,6 +31,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import com.g22.orbitsoundkotlin.analytics.MusicAnalytics
 import com.g22.orbitsoundkotlin.services.AuthResult
@@ -43,6 +44,7 @@ import com.g22.orbitsoundkotlin.ui.viewmodels.AuthViewModelFactory
 import com.g22.orbitsoundkotlin.ui.screens.home.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
 import com.g22.orbitsoundkotlin.ui.screens.library.LibraryScreen
+import com.g22.orbitsoundkotlin.ui.viewmodels.LibraryViewModel
 import com.g22.orbitsoundkotlin.ui.screens.auth.AuthScreenCallbacks
 import com.g22.orbitsoundkotlin.ui.viewmodels.AuthViewModel
 import com.g22.orbitsoundkotlin.ui.screens.auth.LocalAuthScreenCallbacks
@@ -362,7 +364,18 @@ private fun OrbitSoundApp() {
                 )
             }
             is AppDestination.Library -> {
+                val libraryViewModel: LibraryViewModel = viewModel()
+                
+                // 🔄 Load user's emotions and refresh recommendations
+                LaunchedEffect(Unit) {
+                    val userId = current.user.id
+                    if (userId.isNotEmpty()) {
+                        libraryViewModel.loadUserEmotionsAndRefresh(userId)
+                    }
+                }
+                
                 LibraryScreen(
+                    viewModel = libraryViewModel,
                     onNavigateToProfile = {
                         destination = AppDestination.Profile(current.user)
                     },
