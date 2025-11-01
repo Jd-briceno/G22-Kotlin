@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.analytics.MusicAnalytics
 import com.g22.orbitsoundkotlin.data.FirestoreEmotionRepository
 import com.g22.orbitsoundkotlin.data.MusicRecommendationEngine
+import androidx.compose.ui.graphics.Color
 import com.g22.orbitsoundkotlin.models.Constellation
 import com.g22.orbitsoundkotlin.models.EmotionModel
 import com.g22.orbitsoundkotlin.models.Track
@@ -96,17 +97,21 @@ class LibraryViewModel(
         return withContext(Dispatchers.IO) {
             try {
                 val emotionRepo = FirestoreEmotionRepository()
-                // getEmotionLogs returns Flow, we take first emission
                 val logs = emotionRepo.getEmotionLogs(userId).first()
                 
-                // Convert EmotionLog.EmotionEntry to EmotionModel
                 val allEmotions = logs.flatMap { log -> 
                     log.emotions.map { entry -> 
-                        EmotionModel(id = entry.id, name = entry.name)
+                        EmotionModel(
+                            id = entry.id,
+                            name = entry.name,
+                            description = "",
+                            color = Color.Gray,
+                            iconRes = 0,
+                            source = entry.source
+                        )
                     }
                 }
                 
-                // Return most recent N emotions
                 allEmotions.take(limit)
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching emotions from Firestore", e)
@@ -119,7 +124,6 @@ class LibraryViewModel(
      * Helper: Wrapper to call loadPersonalizedPlaylists with emotions.
      */
     private suspend fun loadPersonalizedPlaylistsWithEmotions(emotions: List<EmotionModel>) {
-        // Call existing loadPersonalizedPlaylists with emotions (no constellations for now)
         loadPersonalizedPlaylists(
             userConstellations = emptyList(),
             recentEmotions = emotions
@@ -142,7 +146,6 @@ class LibraryViewModel(
             _uiState.update { it.copy(searchLoading = true) }
             
             try {
-                // Explicit I/O dispatcher for network call
                 val tracks = withContext(Dispatchers.IO) {
                     Log.d(TAG, "🔄 [CASE C - IO] Searching on: ${Thread.currentThread().name}")
                     spotifyService.searchTracks(query)
@@ -150,11 +153,9 @@ class LibraryViewModel(
                 
                 Log.d(TAG, "✅ [CASE C] Fetched ${tracks.size} tracks")
                 
-                // Explicit Main dispatcher for UI update (academic - StateFlow is thread-safe)
                 withContext(Dispatchers.Main) {
                     Log.d(TAG, "🎨 [CASE C - Main] Updating UI on: ${Thread.currentThread().name}")
                     
-                    // 📊 Analytics: Track search
                     MusicAnalytics.trackSearch(query, tracks.size)
                     
                     _uiState.update {
@@ -196,10 +197,8 @@ class LibraryViewModel(
         }
         
         sectionData?.let { data ->
-            // Determine section type
             val sectionType = determineSectionType(data.section.title)
             
-            // 📊 Analytics: Track section click
             MusicAnalytics.trackSectionClick(
                 sectionTitle = data.section.title,
                 sectionType = sectionType,
@@ -208,7 +207,6 @@ class LibraryViewModel(
                 sectionPosition = sectionPosition
             )
             
-            // 📊 Analytics: Track detail view
             MusicAnalytics.trackTrackDetailView(track.title, track.artist)
         }
         
@@ -220,7 +218,6 @@ class LibraryViewModel(
      * 📊 Tracks in Analytics the click on search result.
      */
     fun selectTrackFromSearch(track: Track, position: Int, query: String) {
-        // 📊 Analytics: Track search result click
         MusicAnalytics.trackSearchResultClick(
             query = query,
             trackTitle = track.title,
@@ -228,7 +225,6 @@ class LibraryViewModel(
             resultPosition = position
         )
         
-        // 📊 Analytics: Track detail view
         MusicAnalytics.trackTrackDetailView(track.title, track.artist)
         
         _uiState.update { it.copy(selectedTrack = track) }
@@ -249,7 +245,6 @@ class LibraryViewModel(
             title.contains("Saturn", ignoreCase = true) ||
             title.contains("Starlight", ignoreCase = true) -> "default"
             
-            // Constellations
             title.contains("Cisne", ignoreCase = true) ||
             title.contains("Pegasus", ignoreCase = true) ||
             title.contains("Draco", ignoreCase = true) ||
@@ -257,7 +252,6 @@ class LibraryViewModel(
             title.contains("Cross", ignoreCase = true) ||
             title.contains("Phoenix", ignoreCase = true) -> "constellation"
             
-            // Emotions
             title.contains("Joyful", ignoreCase = true) ||
             title.contains("Melancholy", ignoreCase = true) ||
             title.contains("Volcanic", ignoreCase = true) ||
@@ -279,7 +273,6 @@ class LibraryViewModel(
     
     /**
      * Loads personalized playlists using the recommendation engine.
-     * ✨ Bonus: Fixed parallel calls to use Dispatchers.IO
      */
     private fun loadPersonalizedPlaylists(
         userConstellations: List<Constellation> = emptyList(),
@@ -291,7 +284,6 @@ class LibraryViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(playlistsLoading = true) }
             try {
-                // Generate personalized sections
                 val sections = MusicRecommendationEngine.generatePlaylistSections(
                     userConstellations = userConstellations,
                     recentEmotions = recentEmotions
@@ -300,7 +292,6 @@ class LibraryViewModel(
                 Log.d(TAG, "Sections generated: ${sections.joinToString { it.title }}")
                 Log.d(TAG, "Starting parallel searches")
                 
-                // 📊 Analytics: Track recommendation context
                 val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
                 val timeOfDay = when (hour) {
                     in 5..11 -> "morning"
@@ -317,7 +308,6 @@ class LibraryViewModel(
                     timeOfDay = timeOfDay
                 )
                 
-                // ✨ Load tracks for each section in parallel with Dispatchers.IO
                 val section1Deferred = async(Dispatchers.IO) { 
                     spotifyService.searchTracks(sections[0].query)
                 }
@@ -338,7 +328,6 @@ class LibraryViewModel(
                 
                 Log.d(TAG, "Playlists loaded: ${section1Songs.size}, ${section2Songs.size}, ${section3Songs.size}, ${section4Songs.size}")
                 
-                // 📊 Analytics: Track each loaded section
                 listOf(
                     Triple(sections[0], section1Songs, 1),
                     Triple(sections[1], section2Songs, 2),
@@ -399,7 +388,6 @@ class LibraryViewModel(
         val selectedTrack: Track? = null,
         val error: String? = null
     ) {
-        // Legacy compatibility properties (LibraryScreen)
         @Deprecated("Use section1.tracks instead", ReplaceWith("section1?.tracks ?: emptyList()"))
         val starlightSongs: List<Track> get() = section1?.tracks ?: emptyList()
         
