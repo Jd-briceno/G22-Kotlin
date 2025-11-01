@@ -35,14 +35,18 @@ class LibraryViewModel(
 
     init {
         Log.d(TAG, "Initializing LibraryViewModel")
-        // 📊 Analytics: User entered LibraryScreen
         MusicAnalytics.trackLibraryScreenView()
         loadPersonalizedPlaylists()
     }
     
     /**
-     * Updates recommendations based on user's constellations and emotions.
-     * Can be called when the user updates their preferences.
+     * Updates playlist recommendations based on user's constellations and emotions.
+     * 
+     * This method can be called when the user updates their preferences or when
+     * fresh recommendations are needed based on new data.
+     *
+     * @param userConstellations List of user's selected constellations for personalization
+     * @param recentEmotions List of user's recent emotions for mood-based recommendations
      */
     fun refreshRecommendations(
         userConstellations: List<Constellation> = emptyList(),
@@ -52,46 +56,49 @@ class LibraryViewModel(
     }
     
     /**
-     * 🔄 CASE B: Nested Coroutines with Multiple I/O Operations
+     * Loads user emotions from Firestore and refreshes playlist recommendations.
      * 
-     * Loads user's emotions from Firestore, then uses them to generate
-     * personalized playlist recommendations from Spotify.
-     * 
-     * Demonstrates: Sequential I/O dependency chain with nested coroutines.
+     * This method performs a sequential operation where user's recent emotions
+     * are first fetched from Firestore, then used to generate personalized
+     * playlist recommendations from Spotify. All I/O operations are executed
+     * on the IO dispatcher to avoid blocking the main thread.
+     *
+     * @param userId The unique identifier of the user whose data should be loaded
      */
     fun loadUserEmotionsAndRefresh(userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            Log.d(TAG, "🔄 [CASE B] Starting nested I/O operations")
+            Log.d(TAG, "Starting emotion-based playlist refresh")
             
             try {
-                // 1st I/O: Get user's recent emotions from Firestore
                 val emotionsDeferred = async(Dispatchers.IO) {
-                    Log.d(TAG, "🔄 [CASE B - Level 1] Fetching emotions on: ${Thread.currentThread().name}")
+                    Log.d(TAG, "Fetching emotions on: ${Thread.currentThread().name}")
                     getRecentEmotionsFromFirestore(userId, limit = 5)
                 }
                 
                 val emotions = emotionsDeferred.await()
-                Log.d(TAG, "✅ [CASE B - Level 1] Emotions loaded: ${emotions.size} emotions")
+                Log.d(TAG, "Emotions loaded: ${emotions.size} emotions")
                 
-                // 2nd I/O (nested): Load personalized playlists using emotions
                 val playlistsDeferred = async(Dispatchers.IO) {
-                    Log.d(TAG, "🔄 [CASE B - Level 2] Loading playlists on: ${Thread.currentThread().name}")
-                    // This internally makes 4 parallel Spotify API calls
+                    Log.d(TAG, "Loading playlists on: ${Thread.currentThread().name}")
                     loadPersonalizedPlaylistsWithEmotions(emotions)
                 }
                 
                 playlistsDeferred.await()
-                Log.d(TAG, "✅ [CASE B - Level 2] All nested operations completed")
+                Log.d(TAG, "All nested operations completed")
                 
             } catch (e: Exception) {
-                Log.e(TAG, "❌ [CASE B] Error in nested operations", e)
+                Log.e(TAG, "Error in nested operations", e)
                 _uiState.update { it.copy(error = e.message) }
             }
         }
     }
     
     /**
-     * Helper: Fetches recent emotions from Firestore and converts to EmotionModel list.
+     * Fetches recent emotions from Firestore and converts them to EmotionModel list.
+     *
+     * @param userId The user identifier for fetching emotion logs
+     * @param limit Maximum number of emotions to retrieve
+     * @return List of EmotionModel objects representing user's recent emotions
      */
     private suspend fun getRecentEmotionsFromFirestore(userId: String, limit: Int): List<EmotionModel> {
         return withContext(Dispatchers.IO) {
@@ -121,7 +128,9 @@ class LibraryViewModel(
     }
     
     /**
-     * Helper: Wrapper to call loadPersonalizedPlaylists with emotions.
+     * Wrapper method to load personalized playlists using only emotion data.
+     *
+     * @param emotions List of emotions to use for generating recommendations
      */
     private suspend fun loadPersonalizedPlaylistsWithEmotions(emotions: List<EmotionModel>) {
         loadPersonalizedPlaylists(
@@ -131,30 +140,32 @@ class LibraryViewModel(
     }
 
     /**
-     * 🎨 CASE C: Explicit Dispatcher Switch (I/O → Main)
+     * Searches for music tracks on Spotify based on user query.
      * 
-     * Searches for tracks on Spotify with explicit dispatcher switching.
-     * Network call uses IO dispatcher, UI update uses Main dispatcher.
-     * 
-     * Demonstrates: Explicit context switching between I/O and Main threads.
+     * This method performs the search operation on an IO dispatcher for network calls,
+     * then switches to the Main dispatcher to update the UI state. This ensures
+     * that network operations don't block the main thread while UI updates
+     * happen on the appropriate thread.
+     *
+     * @param query The search query string entered by the user
      */
     fun searchTracks(query: String) {
         if (query.isEmpty()) return
         
-        Log.d(TAG, "🔍 [CASE C] Starting search with dispatcher switch: $query")
+        Log.d(TAG, "Starting search with dispatcher switch: $query")
         viewModelScope.launch {
             _uiState.update { it.copy(searchLoading = true) }
             
             try {
                 val tracks = withContext(Dispatchers.IO) {
-                    Log.d(TAG, "🔄 [CASE C - IO] Searching on: ${Thread.currentThread().name}")
+                    Log.d(TAG, "Searching on: ${Thread.currentThread().name}")
                     spotifyService.searchTracks(query)
                 }
                 
-                Log.d(TAG, "✅ [CASE C] Fetched ${tracks.size} tracks")
+                Log.d(TAG, "Fetched ${tracks.size} tracks")
                 
                 withContext(Dispatchers.Main) {
-                    Log.d(TAG, "🎨 [CASE C - Main] Updating UI on: ${Thread.currentThread().name}")
+                    Log.d(TAG, "Updating UI on: ${Thread.currentThread().name}")
                     
                     MusicAnalytics.trackSearch(query, tracks.size)
                     
@@ -167,7 +178,7 @@ class LibraryViewModel(
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ [CASE C] Error in search", e)
+                Log.e(TAG, "Error in search", e)
                 withContext(Dispatchers.Main) {
                     _uiState.update {
                         it.copy(
@@ -181,8 +192,13 @@ class LibraryViewModel(
     }
     
     /**
-     * Selects a track from a recommendation section.
-     * 📊 Tracks in Analytics which section the click came from.
+     * Selects a track from a recommendation section and tracks the interaction.
+     * 
+     * Records analytics data about which section the track was selected from,
+     * including section position, title, and type for recommendation analysis.
+     *
+     * @param track The track that was selected
+     * @param sectionPosition The position of the section (1-4) where the track was located
      */
     fun selectTrackFromSection(
         track: Track,
@@ -214,8 +230,14 @@ class LibraryViewModel(
     }
     
     /**
-     * Selects a track from search results.
-     * 📊 Tracks in Analytics the click on search result.
+     * Selects a track from search results and records the interaction.
+     * 
+     * Tracks analytics data about the search result selection, including
+     * the query that led to the result and the position in the results list.
+     *
+     * @param track The track that was selected from search results
+     * @param position The position of the track in the search results list
+     * @param query The search query that produced these results
      */
     fun selectTrackFromSearch(track: Track, position: Int, query: String) {
         MusicAnalytics.trackSearchResultClick(
@@ -231,7 +253,12 @@ class LibraryViewModel(
     }
     
     /**
-     * Determines the section type based on its title.
+     * Determines the type category of a playlist section based on its title.
+     * 
+     * Categories include: time-based, constellation-based, emotion-based, or default.
+     *
+     * @param title The title of the playlist section
+     * @return The section type as a string identifier
      */
     private fun determineSectionType(title: String): String {
         return when {
@@ -267,12 +294,26 @@ class LibraryViewModel(
         }
     }
     
+    /**
+     * Dismisses the currently displayed track detail view.
+     * 
+     * Clears the selected track from the UI state, closing any detail
+     * view that may be showing.
+     */
     fun dismissTrackDetail() {
         _uiState.update { it.copy(selectedTrack = null) }
     }
     
     /**
      * Loads personalized playlists using the recommendation engine.
+     * 
+     * Generates four playlist sections based on user preferences (constellations
+     * and recent emotions) and fetches tracks for each section from Spotify.
+     * All Spotify API calls are executed in parallel on the IO dispatcher
+     * for optimal performance.
+     *
+     * @param userConstellations List of user's selected constellations
+     * @param recentEmotions List of user's recent emotions
      */
     private fun loadPersonalizedPlaylists(
         userConstellations: List<Constellation> = emptyList(),
@@ -361,7 +402,10 @@ class LibraryViewModel(
     }
     
     /**
-     * Data class that combines section information with its tracks.
+     * Data class that combines playlist section metadata with its associated tracks.
+     *
+     * @property section The playlist section information (title, query, etc.)
+     * @property tracks List of tracks belonging to this section
      */
     data class PlaylistSectionData(
         val section: MusicRecommendationEngine.PlaylistSection,
@@ -369,21 +413,27 @@ class LibraryViewModel(
     )
     
     /**
-     * UI state for LibraryScreen.
+     * Represents the complete UI state for the Library screen.
+     *
+     * @property searchResults List of tracks from the current search query
+     * @property searchLoading Indicates if a search operation is in progress
+     * @property lastSearchQuery The most recent search query for analytics tracking
+     * @property section1 First personalized playlist section with tracks
+     * @property section2 Second personalized playlist section with tracks
+     * @property section3 Third personalized playlist section with tracks
+     * @property section4 Fourth personalized playlist section with tracks
+     * @property playlistsLoading Indicates if playlist sections are being loaded
+     * @property selectedTrack Currently selected track for detail view
+     * @property error Error message if any operation fails
      */
     data class LibraryUiState(
-        // Search
         val searchResults: List<Track> = emptyList(),
         val searchLoading: Boolean = false,
-        val lastSearchQuery: String = "", // For analytics
-        
-        // Personalized playlist sections
+        val lastSearchQuery: String = "",
         val section1: PlaylistSectionData? = null,
         val section2: PlaylistSectionData? = null,
         val section3: PlaylistSectionData? = null,
         val section4: PlaylistSectionData? = null,
-        
-        // General state
         val playlistsLoading: Boolean = false,
         val selectedTrack: Track? = null,
         val error: String? = null

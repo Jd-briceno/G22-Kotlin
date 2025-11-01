@@ -366,7 +366,7 @@ private fun OrbitSoundApp() {
             is AppDestination.Library -> {
                 val libraryViewModel: LibraryViewModel = viewModel()
                 
-                // 🔄 CASE B: Load user's emotions and refresh recommendations
+                // Load user's emotions and refresh recommendations when entering library
                 LaunchedEffect(Unit) {
                     val userId = current.user.id
                     if (userId.isNotEmpty()) {
