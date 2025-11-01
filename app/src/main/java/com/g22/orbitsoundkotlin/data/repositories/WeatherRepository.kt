@@ -2,7 +2,7 @@ package com.g22.orbitsoundkotlin.data.repositories
 
 import com.g22.orbitsoundkotlin.data.local.AppDatabase
 import com.g22.orbitsoundkotlin.data.local.entities.WeatherCacheEntity
-import com.g22.orbitsoundkotlin.ui.screens.home.Weather
+import com.g22.orbitsoundkotlin.ui.viewmodels.Weather
 
 /**
  * Repository para datos de clima usando SWR pattern (Stale-While-Revalidate).

@@ -5,6 +5,8 @@ import android.location.Location
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.g22.orbitsoundkotlin.data.local.AppDatabase
+import com.g22.orbitsoundkotlin.data.repositories.WeatherRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,8 +60,13 @@ class HomeEventPublisher {
 
 class HomeViewModel(
     private val publisher: HomeEventPublisher = HomeEventPublisher(),
-    private val weatherService: WeatherService = WeatherService
+    private val weatherService: WeatherService = WeatherService,
+    private val context: Context? = null // Para WeatherRepository
 ) : ViewModel() {
+
+    private val weatherRepository by lazy { 
+        context?.let { WeatherRepository(AppDatabase.getInstance(it)) }
+    }
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -137,10 +144,22 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoadingWeather = true, error = null) }
             try {
                 val loc = getLastKnownLocation(context)
-                val weather = weatherService.fetchWeather(
-                    lat = loc?.latitude ?: 4.60971,
-                    lon = loc?.longitude ?: -74.08175
-                )
+                val lat = loc?.latitude ?: 4.60971
+                val lon = loc?.longitude ?: -74.08175
+                
+                // ✅ CONECTIVIDAD EVENTUAL: Usar WeatherRepository con SWR pattern
+                val weather = if (weatherRepository != null) {
+                    weatherRepository!!.getWeather(
+                        uid = "default_user", // En producción usar el UID real del usuario
+                        latitude = lat,
+                        longitude = lon,
+                        fetchRemote = { weatherService.fetchWeather(lat, lon) }
+                    )
+                } else {
+                    // Fallback si no hay context
+                    weatherService.fetchWeather(lat, lon)
+                }
+                
                 latestWeather = weather
                 latestLocationError = false
                 publisher.notify(HomeEvent.WeatherUpdated(weather))

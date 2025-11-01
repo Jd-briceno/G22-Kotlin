@@ -39,6 +39,7 @@ import com.g22.orbitsoundkotlin.services.AuthUser
 import com.g22.orbitsoundkotlin.data.RememberSettings
 import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
 import com.g22.orbitsoundkotlin.data.userPreferencesStore
+import com.g22.orbitsoundkotlin.ui.viewmodels.AuthViewModelFactory
 import com.g22.orbitsoundkotlin.ui.screens.home.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
 import com.g22.orbitsoundkotlin.ui.screens.library.LibraryScreen
@@ -51,6 +52,7 @@ import com.g22.orbitsoundkotlin.ui.screens.profile.ProfileScreen
 import com.g22.orbitsoundkotlin.ui.screens.emotions.StellarEmotionsScreen
 import com.g22.orbitsoundkotlin.ui.screens.emotions.ConstellationsScreen
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
+import com.g22.orbitsoundkotlin.utils.SyncManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +62,9 @@ class MainActivity : ComponentActivity() {
         
         // 📊 Inicializar Analytics
         MusicAnalytics.initialize(this)
+        
+        // ✅ CONECTIVIDAD EVENTUAL: Inicializar SyncManager para Workers periódicos
+        SyncManager(this).startPeriodicSync()
         
         setContent {
             OrbitSoundKotlinTheme {
@@ -77,7 +82,10 @@ private fun OrbitSoundApp() {
     val context = LocalContext.current
     val userPreferencesRepository = remember { UserPreferencesRepository(context.userPreferencesStore) }
     val rememberSettings by userPreferencesRepository.rememberSettings.collectAsState(initial = RememberSettings())
-    val authViewModel: AuthViewModel = viewModel()
+    // ✅ CONECTIVIDAD EVENTUAL: Inyectar Context al AuthViewModel
+    val authViewModel: AuthViewModel = viewModel(
+        factory = AuthViewModelFactory(context)
+    )
     val authUiState by authViewModel.uiState.collectAsState()
 
     var rememberMeChecked by remember { mutableStateOf(rememberSettings.rememberMe) }
@@ -287,7 +295,8 @@ private fun OrbitSoundApp() {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
-                    isSaving = isAuthenticating,
+                    userId = current.user.id,
+                    viewModel = null, // TODO: Inyectar ViewModel con Context
                     onBack = {
                         destination = AppDestination.Login
                     },
@@ -303,14 +312,8 @@ private fun OrbitSoundApp() {
                         }
                         destination = AppDestination.Home(current.user)
                     },
-                    onContinue = { selections ->
-                        coroutineScope.launch {
-                            authService.updateUserInterests(
-                                user = current.user,
-                                interests = selections,
-                                skipped = false
-                            )
-                        }
+                    onContinue = {
+                        // Ya no recibe selections, el ViewModel lo maneja
                         destination = AppDestination.Home(current.user)
                     }
                 )
