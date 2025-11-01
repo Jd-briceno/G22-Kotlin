@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.models.Constellation
+import com.g22.orbitsoundkotlin.repositories.ConstellationLogRepository
 import com.g22.orbitsoundkotlin.services.EmotionSuggestionService
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -24,6 +25,7 @@ import java.util.concurrent.TimeUnit
 class ConstellationsViewModel : ViewModel() {
 
     private val emotionSuggestionService = EmotionSuggestionService.getInstance()
+    private val constellationLogRepository = ConstellationLogRepository()
 
     // State for selected constellation
     private val _selectedConstellation = MutableStateFlow<Constellation?>(null)
@@ -149,6 +151,16 @@ class ConstellationsViewModel : ViewModel() {
     fun selectConstellation(constellation: Constellation) {
         _selectedConstellation.value = constellation
         Log.d("ConstellationsViewModel", "Selected constellation: ${constellation.id} (${constellation.title})")
+
+        // Log the selection to Firebase
+        viewModelScope.launch {
+            val success = constellationLogRepository.logConstellationSelection(constellation)
+            if (success) {
+                Log.d("ConstellationsViewModel", "Constellation selection logged successfully")
+            } else {
+                Log.w("ConstellationsViewModel", "Failed to log constellation selection")
+            }
+        }
     }
 
     /**
@@ -179,6 +191,16 @@ class ConstellationsViewModel : ViewModel() {
         if (matched != null) {
             _selectedConstellation.value = matched
             Log.d("ConstellationsViewModel", "Auto-selected constellation: ${matched.id} (${matched.title})")
+
+            // Log the auto-selection to Firebase
+            viewModelScope.launch {
+                val success = constellationLogRepository.logConstellationSelection(matched)
+                if (success) {
+                    Log.d("ConstellationsViewModel", "Auto-selected constellation logged successfully")
+                } else {
+                    Log.w("ConstellationsViewModel", "Failed to log auto-selected constellation")
+                }
+            }
         } else {
             Log.w("ConstellationsViewModel", "No constellation matched for suggestion: $suggestedEmotion")
         }
@@ -215,4 +237,3 @@ class ConstellationsViewModel : ViewModel() {
         return null
     }
 }
-
