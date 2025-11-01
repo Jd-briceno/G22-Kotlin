@@ -321,6 +321,16 @@ private fun OrbitSoundApp() {
                 )
             }
             is AppDestination.Home -> {
+                val libraryViewModel: LibraryViewModel = viewModel()
+                
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(2000)
+                    val userId = current.user.id
+                    if (userId.isNotEmpty()) {
+                        libraryViewModel.prefetchLibraryData(userId)
+                    }
+                }
+                
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -366,7 +376,6 @@ private fun OrbitSoundApp() {
             is AppDestination.Library -> {
                 val libraryViewModel: LibraryViewModel = viewModel()
                 
-                // 🔄 Load user's emotions and refresh recommendations
                 LaunchedEffect(Unit) {
                     val userId = current.user.id
                     if (userId.isNotEmpty()) {
