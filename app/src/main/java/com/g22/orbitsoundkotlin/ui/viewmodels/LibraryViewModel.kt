@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.analytics.MusicAnalytics
 import com.g22.orbitsoundkotlin.data.FirestoreEmotionRepository
 import com.g22.orbitsoundkotlin.data.MusicRecommendationEngine
+import com.g22.orbitsoundkotlin.data.repositories.LibraryCacheRepository
 import androidx.compose.ui.graphics.Color
 import com.g22.orbitsoundkotlin.models.Constellation
 import com.g22.orbitsoundkotlin.models.EmotionModel
@@ -23,7 +24,9 @@ import kotlinx.coroutines.withContext
 import java.util.Calendar
 
 class LibraryViewModel(
-    private val spotifyService: SpotifyService = SpotifyService.Companion.getInstance()
+    private val spotifyService: SpotifyService = SpotifyService.Companion.getInstance(),
+    private val libraryCacheRepo: LibraryCacheRepository? = null,
+    private val userId: String = ""
 ) : ViewModel() {
     
     companion object {
@@ -155,6 +158,18 @@ class LibraryViewModel(
         Log.d(TAG, "Starting search with dispatcher switch: $query")
         viewModelScope.launch {
             _uiState.update { it.copy(searchLoading = true) }
+            
+            // Save to search history
+            if (libraryCacheRepo != null && userId.isNotEmpty()) {
+                withContext(Dispatchers.IO) {
+                    try {
+                        libraryCacheRepo.saveSearch(userId, query)
+                        Log.d(TAG, "Search saved to history: $query")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error saving search history", e)
+                    }
+                }
+            }
             
             try {
                 val tracks = withContext(Dispatchers.IO) {
@@ -305,6 +320,96 @@ class LibraryViewModel(
     }
     
     /**
+     * Loads sections from local cache (instant load).
+     * Part of SWR (Stale-While-Revalidate) pattern - shows cached data immediately
+     * while fresh data loads in background.
+     */
+    private suspend fun loadFromCache() {
+        if (libraryCacheRepo == null || userId.isEmpty()) return
+        
+        try {
+            val cachedSections = libraryCacheRepo.getAllSections(userId)
+            
+            if (cachedSections.isNotEmpty()) {
+                Log.d(TAG, "Loading ${cachedSections.size} sections from cache")
+                
+                withContext(Dispatchers.Main) {
+                    _uiState.update { state ->
+                        var updatedState = state
+                        
+                        cachedSections[1]?.let { (title, tracks) ->
+                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "", "🎵")
+                            updatedState = updatedState.copy(
+                                section1 = PlaylistSectionData(section, tracks)
+                            )
+                        }
+                        
+                        cachedSections[2]?.let { (title, tracks) ->
+                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "", "🎵")
+                            updatedState = updatedState.copy(
+                                section2 = PlaylistSectionData(section, tracks)
+                            )
+                        }
+                        
+                        cachedSections[3]?.let { (title, tracks) ->
+                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "", "🎵")
+                            updatedState = updatedState.copy(
+                                section3 = PlaylistSectionData(section, tracks)
+                            )
+                        }
+                        
+                        cachedSections[4]?.let { (title, tracks) ->
+                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "", "🎵")
+                            updatedState = updatedState.copy(
+                                section4 = PlaylistSectionData(section, tracks),
+                                playlistsLoading = false // Cache loaded, remove spinner
+                            )
+                        }
+                        
+                        updatedState
+                    }
+                }
+                
+                Log.d(TAG, "Cache loaded successfully")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading cache", e)
+            // Don't fail - let Spotify refresh handle it
+        }
+    }
+    
+    /**
+     * Saves the 4 playlist sections to local cache for next load.
+     * Enables instant loading on next app launch.
+     */
+    private suspend fun cacheSections(
+        sections: List<MusicRecommendationEngine.PlaylistSection>,
+        section1Tracks: List<Track>,
+        section2Tracks: List<Track>,
+        section3Tracks: List<Track>,
+        section4Tracks: List<Track>
+    ) {
+        if (libraryCacheRepo == null || userId.isEmpty()) return
+        
+        try {
+            withContext(Dispatchers.IO) {
+                val sectionsData = mapOf(
+                    1 to Pair(sections[0].title, section1Tracks),
+                    2 to Pair(sections[1].title, section2Tracks),
+                    3 to Pair(sections[2].title, section3Tracks),
+                    4 to Pair(sections[3].title, section4Tracks)
+                )
+                
+                libraryCacheRepo.cacheAllSections(userId, sectionsData)
+                Log.d(TAG, "Cached all 4 sections successfully")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error caching sections", e)
+            // Non-critical - app continues working
+        }
+    }
+    
+    /**
      * Loads personalized playlists using the recommendation engine.
      * 
      * Generates four playlist sections based on user preferences (constellations
@@ -324,6 +429,10 @@ class LibraryViewModel(
         
         viewModelScope.launch {
             _uiState.update { it.copy(playlistsLoading = true) }
+            
+            // SWR PATTERN: Load from cache first (instant load)
+            loadFromCache()
+            
             try {
                 val sections = MusicRecommendationEngine.generatePlaylistSections(
                     userConstellations = userConstellations,
@@ -391,6 +500,10 @@ class LibraryViewModel(
                     section4 = PlaylistSectionData(sections[3], section4Songs),
                     playlistsLoading = false
                 )}
+                
+                // SWR PATTERN: Cache fresh data in background (for next load)
+                cacheSections(sections, section1Songs, section2Songs, section3Songs, section4Songs)
+                
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading personalized playlists", e)
                 _uiState.update { it.copy(

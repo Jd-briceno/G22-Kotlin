@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -40,6 +41,8 @@ import com.g22.orbitsoundkotlin.services.AuthUser
 import com.g22.orbitsoundkotlin.data.RememberSettings
 import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
 import com.g22.orbitsoundkotlin.data.userPreferencesStore
+import com.g22.orbitsoundkotlin.data.local.AppDatabase
+import com.g22.orbitsoundkotlin.data.repositories.LibraryCacheRepository
 import com.g22.orbitsoundkotlin.ui.viewmodels.AuthViewModelFactory
 import com.g22.orbitsoundkotlin.ui.screens.home.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
@@ -364,7 +367,20 @@ private fun OrbitSoundApp() {
                 )
             }
             is AppDestination.Library -> {
-                val libraryViewModel: LibraryViewModel = viewModel()
+                // ✅ LOCAL STORAGE: Initialize Room database and cache repository
+                val database = remember { AppDatabase.getInstance(context) }
+                val libraryCacheRepo = remember { LibraryCacheRepository(database.libraryCacheDao()) }
+                val libraryViewModel: LibraryViewModel = viewModel(
+                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                            @Suppress("UNCHECKED_CAST")
+                            return LibraryViewModel(
+                                libraryCacheRepo = libraryCacheRepo,
+                                userId = current.user.id
+                            ) as T
+                        }
+                    }
+                )
                 
                 // Load user's emotions and refresh recommendations when entering library
                 LaunchedEffect(Unit) {
