@@ -40,6 +40,8 @@ import com.g22.orbitsoundkotlin.services.AuthUser
 import com.g22.orbitsoundkotlin.data.RememberSettings
 import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
 import com.g22.orbitsoundkotlin.data.userPreferencesStore
+import com.g22.orbitsoundkotlin.data.local.AppDatabase
+import com.g22.orbitsoundkotlin.data.repositories.LibraryCacheRepository
 import com.g22.orbitsoundkotlin.ui.viewmodels.AuthViewModelFactory
 import com.g22.orbitsoundkotlin.ui.screens.home.HomeScreen
 import com.g22.orbitsoundkotlin.ui.screens.InterestSelectionScreen
@@ -364,7 +366,19 @@ private fun OrbitSoundApp() {
                 )
             }
             is AppDestination.Library -> {
-                val libraryViewModel: LibraryViewModel = viewModel()
+                // ✅ LOCAL STORAGE: Initialize Room database and cache repository
+                val database = remember { AppDatabase.getInstance(context) }
+                val libraryCacheRepo = remember { LibraryCacheRepository(database.libraryCacheDao()) }
+                val libraryViewModel: LibraryViewModel = viewModel(
+                    factory = androidx.lifecycle.viewmodel.compose.viewModelFactory {
+                        initializer {
+                            LibraryViewModel(
+                                libraryCacheRepo = libraryCacheRepo,
+                                userId = current.user.id
+                            )
+                        }
+                    }
+                )
                 
                 // Load user's emotions and refresh recommendations when entering library
                 LaunchedEffect(Unit) {

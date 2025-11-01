@@ -11,6 +11,8 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
 /**
  * Room Database principal para estrategias de conectividad eventual.
  * Implementa el patrón Outbox y SWR para todas las operaciones.
+ * 
+ * Version 2: Added Library cache entities (LibrarySectionCacheEntity, SearchHistoryEntity)
  */
 @Database(
     entities = [
@@ -19,9 +21,12 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
         LoginTelemetryEntity::class,
         UserInterestsEntity::class,
         WeatherCacheEntity::class,
-        OutboxEntity::class
+        OutboxEntity::class,
+        // Library cache entities (v2)
+        LibrarySectionCacheEntity::class,
+        SearchHistoryEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(StringListConverter::class, JsonConverter::class)
@@ -33,6 +38,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun interestsDao(): InterestsDao
     abstract fun weatherCacheDao(): WeatherCacheDao
     abstract fun outboxDao(): OutboxDao
+    abstract fun libraryCacheDao(): LibraryCacheDao
 
     companion object {
         @Volatile
