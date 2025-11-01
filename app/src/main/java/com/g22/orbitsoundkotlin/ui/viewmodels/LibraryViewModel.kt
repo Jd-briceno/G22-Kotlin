@@ -52,63 +52,6 @@ class LibraryViewModel(
     }
     
     /**
-     * 🎯 CASE A: Simple Coroutine with One Dispatcher (Prefetch)
-     * 
-     * Prefetches Library data in background while user is on Home screen.
-     * This improves UX by making Library load instantly when user navigates.
-     * 
-     * Real-world use case: Data prefetching for better perceived performance.
-     * Demonstrates: Simple coroutine with single dispatcher (Dispatchers.IO).
-     */
-    fun prefetchLibraryData(userId: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            Log.d(TAG, "🎯 [CASE A - Prefetch] Starting background data load")
-            Log.d(TAG, "🎯 [CASE A - Prefetch] Running on: ${Thread.currentThread().name}")
-            
-            try {
-                // Load user emotions from Firestore
-                val emotions = getRecentEmotionsFromFirestore(userId, limit = 5)
-                Log.d(TAG, "🎯 [CASE A - Prefetch] Loaded ${emotions.size} emotions")
-                
-                // Generate personalized sections
-                val sections = MusicRecommendationEngine.generatePlaylistSections(
-                    userConstellations = emptyList(),
-                    recentEmotions = emotions
-                )
-                
-                // Load 4 sections in parallel (still on IO dispatcher)
-                val tracks1 = async(Dispatchers.IO) { spotifyService.searchTracks(sections[0].query) }
-                val tracks2 = async(Dispatchers.IO) { spotifyService.searchTracks(sections[1].query) }
-                val tracks3 = async(Dispatchers.IO) { spotifyService.searchTracks(sections[2].query) }
-                val tracks4 = async(Dispatchers.IO) { spotifyService.searchTracks(sections[3].query) }
-                
-                val section1Songs = tracks1.await()
-                val section2Songs = tracks2.await()
-                val section3Songs = tracks3.await()
-                val section4Songs = tracks4.await()
-                
-                // Update state (ready for when user navigates to Library)
-                _uiState.update {
-                    it.copy(
-                        section1 = PlaylistSectionData(sections[0], section1Songs),
-                        section2 = PlaylistSectionData(sections[1], section2Songs),
-                        section3 = PlaylistSectionData(sections[2], section3Songs),
-                        section4 = PlaylistSectionData(sections[3], section4Songs),
-                        playlistsLoading = false
-                    )
-                }
-                
-                val totalTracks = section1Songs.size + section2Songs.size + section3Songs.size + section4Songs.size
-                Log.d(TAG, "✅ [CASE A - Prefetch] Data loaded successfully in background")
-                Log.d(TAG, "✅ [CASE A - Prefetch] Total: $totalTracks tracks across 4 sections")
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ [CASE A - Prefetch] Failed (silently, no UI impact)", e)
-            }
-        }
-    }
-    
-    /**
      * 🔄 CASE B: Nested Coroutines with Multiple I/O Operations
      * 
      * Loads user's emotions from Firestore, then uses them to generate
