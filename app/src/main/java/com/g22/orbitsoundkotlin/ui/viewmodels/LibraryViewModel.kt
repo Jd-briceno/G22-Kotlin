@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.analytics.MusicAnalytics
 import com.g22.orbitsoundkotlin.data.FirestoreEmotionRepository
 import com.g22.orbitsoundkotlin.data.MusicRecommendationEngine
+import com.g22.orbitsoundkotlin.data.cache.MusicMemoryCache
 import com.g22.orbitsoundkotlin.data.repositories.LibraryCacheRepository
 import androidx.compose.ui.graphics.Color
 import com.g22.orbitsoundkotlin.models.Constellation
@@ -35,6 +36,9 @@ class LibraryViewModel(
 
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
+    
+    // 🧠 In-Memory Cache for instant access
+    private val memoryCache = MusicMemoryCache()
 
     init {
         Log.d(TAG, "Initializing LibraryViewModel")
@@ -155,11 +159,33 @@ class LibraryViewModel(
     fun searchTracks(query: String) {
         if (query.isEmpty()) return
         
-        Log.d(TAG, "Starting search with dispatcher switch: $query")
+        Log.d(TAG, "Starting search: $query")
         viewModelScope.launch {
             _uiState.update { it.copy(searchLoading = true) }
             
-            // Save to search history
+            // 🧠 CACHE HIT: Check memory cache first (instant, <1ms)
+            val cachedTracks = memoryCache.getSearchResults(query)
+            if (cachedTracks != null) {
+                Log.d(TAG, "✅ Cache HIT: Found ${cachedTracks.size} tracks for '$query'")
+                
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(
+                            searchResults = cachedTracks,
+                            searchLoading = false,
+                            lastSearchQuery = query
+                        )
+                    }
+                }
+                
+                MusicAnalytics.trackSearch(query, cachedTracks.size)
+                return@launch
+            }
+            
+            // ❌ CACHE MISS: Fetch from Spotify
+            Log.d(TAG, "❌ Cache MISS: Fetching from Spotify")
+            
+            // Save to search history (Room DB)
             if (libraryCacheRepo != null && userId.isNotEmpty()) {
                 withContext(Dispatchers.IO) {
                     try {
@@ -173,15 +199,16 @@ class LibraryViewModel(
             
             try {
                 val tracks = withContext(Dispatchers.IO) {
-                    Log.d(TAG, "Searching on: ${Thread.currentThread().name}")
                     spotifyService.searchTracks(query)
                 }
                 
-                Log.d(TAG, "Fetched ${tracks.size} tracks")
+                Log.d(TAG, "Fetched ${tracks.size} tracks from Spotify")
+                
+                // 💾 Cache results for next time (5 min TTL)
+                memoryCache.putSearchResults(query, tracks)
+                Log.d(TAG, "Cached ${tracks.size} tracks for query: $query")
                 
                 withContext(Dispatchers.Main) {
-                    Log.d(TAG, "Updating UI on: ${Thread.currentThread().name}")
-                    
                     MusicAnalytics.trackSearch(query, tracks.size)
                     
                     _uiState.update {
@@ -502,7 +529,15 @@ class LibraryViewModel(
                 )}
                 
                 // SWR PATTERN: Cache fresh data in background (for next load)
+                // 💾 Room DB (persistent, 15min TTL)
                 cacheSections(sections, section1Songs, section2Songs, section3Songs, section4Songs)
+                
+                // 🧠 Memory Cache (instant access, session-only)
+                memoryCache.putSection("${userId}_section_1", sections[0], section1Songs)
+                memoryCache.putSection("${userId}_section_2", sections[1], section2Songs)
+                memoryCache.putSection("${userId}_section_3", sections[2], section3Songs)
+                memoryCache.putSection("${userId}_section_4", sections[3], section4Songs)
+                Log.d(TAG, "Cached 4 sections in memory + ${section1Songs.size + section2Songs.size + section3Songs.size + section4Songs.size} tracks")
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading personalized playlists", e)
@@ -512,6 +547,45 @@ class LibraryViewModel(
                 )}
             }
         }
+    }
+    
+    // ==================== Cache Management ====================
+    
+    /**
+     * Gets memory cache statistics for monitoring.
+     * Useful for debugging and performance analysis.
+     */
+    fun getCacheStats(): MusicMemoryCache.CacheStats {
+        return memoryCache.getStats()
+    }
+    
+    /**
+     * Clears all memory caches.
+     * Call on logout to prevent data leakage.
+     */
+    fun clearMemoryCache() {
+        memoryCache.clearAll()
+        Log.d(TAG, "Memory cache cleared")
+    }
+    
+    /**
+     * Clears only search cache.
+     * Call to force fresh search results.
+     */
+    fun clearSearchCache() {
+        memoryCache.clearSearchCache()
+        Log.d(TAG, "Search cache cleared")
+    }
+    
+    /**
+     * Called when ViewModel is cleared (on screen exit).
+     * Optionally clear cache or log stats.
+     */
+    override fun onCleared() {
+        super.onCleared()
+        val stats = memoryCache.getStats()
+        Log.d(TAG, "ViewModel cleared. Cache stats: ${stats.trackCount} tracks, ${stats.sectionCount} sections, ${stats.searchCount} searches")
+        Log.d(TAG, "Cache hit rate: ${stats.trackHitRate}%")
     }
     
     /**
