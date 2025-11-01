@@ -375,10 +375,19 @@ private fun OrbitSoundApp() {
             }
             is AppDestination.Library -> {
                 val libraryViewModel: LibraryViewModel = viewModel()
+                val uiState by libraryViewModel.uiState.collectAsState()
                 
+                // 🔄 CASE B: Only load if data wasn't already prefetched from Home
                 LaunchedEffect(Unit) {
                     val userId = current.user.id
-                    if (userId.isNotEmpty()) {
+                    // Check if data is already loaded (from CASE A prefetch)
+                    val hasData = uiState.section1 != null && 
+                                  uiState.section2 != null && 
+                                  uiState.section3 != null && 
+                                  uiState.section4 != null
+                    
+                    if (userId.isNotEmpty() && !hasData) {
+                        // Only load if data doesn't exist yet
                         libraryViewModel.loadUserEmotionsAndRefresh(userId)
                     }
                 }
