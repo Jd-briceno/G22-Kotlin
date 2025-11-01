@@ -49,15 +49,20 @@ class MusicMemoryCache {
     
     // Track Cache Operations
     
+    /** Generates unique cache key for a track (title + artist). */
+    private fun getTrackKey(track: Track): String {
+        return "${track.title}_${track.artist}".lowercase()
+    }
+    
     /** Adds a single track to cache. */
     fun putTrack(track: Track) {
-        trackCache.put(track.id, track)
+        trackCache.put(getTrackKey(track), track)
     }
     
     /** Adds multiple tracks to cache in a batch operation. */
     fun putTracks(tracks: List<Track>) {
         tracks.forEach { track ->
-            trackCache.put(track.id, track)
+            trackCache.put(getTrackKey(track), track)
         }
     }
     
@@ -183,8 +188,8 @@ class MusicMemoryCache {
         return CacheStats(
             trackCount = trackCache.size(),
             trackMaxCount = trackCache.maxSize(),
-            trackHitCount = trackCache.hitCount(),
-            trackMissCount = trackCache.missCount(),
+            trackHitCount = trackCache.hitCount().toLong(),
+            trackMissCount = trackCache.missCount().toLong(),
             sectionCount = sectionCache.size(),
             sectionMaxCount = sectionCache.maxSize(),
             searchCount = searchCache.size(),

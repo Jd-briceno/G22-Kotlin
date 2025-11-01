@@ -60,15 +60,13 @@ object ImageCacheManager {
      * Uses 10MB cache for network responses.
      */
     private fun createOkHttpClient(context: Context): OkHttpClient {
+        val cacheDir = File(context.cacheDir, "http_cache")
+        val cache = okhttp3.Cache(
+            directory = cacheDir,
+            maxSize = 10L * 1024L * 1024L // 10 MB
+        )
         return OkHttpClient.Builder()
-            .cache(
-                coil.network.CacheStrategy.Companion.cacheDir(context)?.let { cacheDir ->
-                    okhttp3.Cache(
-                        directory = File(cacheDir, "http_cache"),
-                        maxSize = 10L * 1024L * 1024L // 10 MB
-                    )
-                }
-            )
+            .cache(cache)
             .build()
     }
     
@@ -137,10 +135,10 @@ object ImageCacheManager {
         val loader = imageLoader ?: return CacheStats()
         
         return CacheStats(
-            memorySizeBytes = loader.memoryCache?.size ?: 0,
-            memoryMaxSizeBytes = loader.memoryCache?.maxSize ?: 0,
-            diskSizeBytes = loader.diskCache?.size ?: 0,
-            diskMaxSizeBytes = loader.diskCache?.maxSize ?: 0
+            memorySizeBytes = loader.memoryCache?.size?.toLong() ?: 0L,
+            memoryMaxSizeBytes = loader.memoryCache?.maxSize?.toLong() ?: 0L,
+            diskSizeBytes = loader.diskCache?.size ?: 0L,
+            diskMaxSizeBytes = loader.diskCache?.maxSize ?: 0L
         )
     }
     
