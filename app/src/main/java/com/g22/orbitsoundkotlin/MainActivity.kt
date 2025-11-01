@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -370,12 +371,13 @@ private fun OrbitSoundApp() {
                 val database = remember { AppDatabase.getInstance(context) }
                 val libraryCacheRepo = remember { LibraryCacheRepository(database.libraryCacheDao()) }
                 val libraryViewModel: LibraryViewModel = viewModel(
-                    factory = androidx.lifecycle.viewmodel.compose.viewModelFactory {
-                        initializer {
-                            LibraryViewModel(
+                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                            @Suppress("UNCHECKED_CAST")
+                            return LibraryViewModel(
                                 libraryCacheRepo = libraryCacheRepo,
                                 userId = current.user.id
-                            )
+                            ) as T
                         }
                     }
                 )

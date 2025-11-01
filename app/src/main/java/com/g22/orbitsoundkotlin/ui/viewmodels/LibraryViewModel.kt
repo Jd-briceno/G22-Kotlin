@@ -338,28 +338,28 @@ class LibraryViewModel(
                         var updatedState = state
                         
                         cachedSections[1]?.let { (title, tracks) ->
-                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "")
+                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "", "🎵")
                             updatedState = updatedState.copy(
                                 section1 = PlaylistSectionData(section, tracks)
                             )
                         }
                         
                         cachedSections[2]?.let { (title, tracks) ->
-                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "")
+                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "", "🎵")
                             updatedState = updatedState.copy(
                                 section2 = PlaylistSectionData(section, tracks)
                             )
                         }
                         
                         cachedSections[3]?.let { (title, tracks) ->
-                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "")
+                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "", "🎵")
                             updatedState = updatedState.copy(
                                 section3 = PlaylistSectionData(section, tracks)
                             )
                         }
                         
                         cachedSections[4]?.let { (title, tracks) ->
-                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "")
+                            val section = MusicRecommendationEngine.PlaylistSection(title, "", "", "🎵")
                             updatedState = updatedState.copy(
                                 section4 = PlaylistSectionData(section, tracks),
                                 playlistsLoading = false // Cache loaded, remove spinner
