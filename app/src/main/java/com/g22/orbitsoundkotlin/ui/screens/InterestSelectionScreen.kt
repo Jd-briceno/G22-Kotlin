@@ -31,6 +31,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,10 +52,11 @@ import com.g22.orbitsoundkotlin.ui.theme.RobotoMono
 @Composable
 fun InterestSelectionScreen(
     modifier: Modifier = Modifier,
-    isSaving: Boolean = false,
+    userId: String = "default_user", // UID del usuario
+    viewModel: com.g22.orbitsoundkotlin.ui.viewmodels.InterestsViewModel? = null,
     onBack: () -> Unit = {},
     onSkip: () -> Unit = {},
-    onContinue: (selected: List<String>) -> Unit = {}
+    onContinue: () -> Unit = {}
 ) {
     val backgroundColor = Color(0xFF010B19)
     val focusColor = Color(0xFF0095FC)
@@ -66,7 +69,32 @@ fun InterestSelectionScreen(
         "Sunset Vibes", "Friends", "Nature", "Love"
     )
 
+    // ✅ CONECTIVIDAD EVENTUAL: Usar estado del ViewModel si está disponible
+    val uiState = viewModel?.uiState?.collectAsState()
+    val isSaving = uiState?.value?.isSaving ?: false
+    
     var selectedInterests by rememberSaveable { mutableStateOf(listOf<String>()) }
+
+    // Cargar intereses existentes al iniciar
+    LaunchedEffect(userId) {
+        viewModel?.loadInterests(userId)
+    }
+    
+    // Actualizar selectedInterests cuando se carguen desde el ViewModel
+    LaunchedEffect(uiState?.value?.selectedInterests) {
+        val loadedInterests = uiState?.value?.selectedInterests
+        if (loadedInterests != null && loadedInterests.isNotEmpty()) {
+            selectedInterests = loadedInterests
+        }
+    }
+    
+    // Navegar cuando se guarde exitosamente
+    LaunchedEffect(uiState?.value?.saveSuccess) {
+        if (uiState?.value?.saveSuccess == true) {
+            viewModel?.consumeSaveSuccess()
+            onContinue()
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -194,7 +222,15 @@ fun InterestSelectionScreen(
             }
 
             Button(
-                onClick = { onContinue(selectedInterests) },
+                onClick = { 
+                    // ✅ CONECTIVIDAD EVENTUAL: Guardar con versionado y Outbox
+                    if (viewModel != null) {
+                        viewModel.saveInterests(userId, selectedInterests)
+                    } else {
+                        // Fallback si no hay ViewModel
+                        onContinue()
+                    }
+                },
                 enabled = !isSaving,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(30.dp),

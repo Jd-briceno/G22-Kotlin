@@ -1,10 +1,19 @@
 package com.g22.orbitsoundkotlin.ui.viewmodels
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.g22.orbitsoundkotlin.data.local.AppDatabase
+import com.g22.orbitsoundkotlin.data.local.entities.LoginTelemetryEntity
+import com.g22.orbitsoundkotlin.data.local.entities.LoginType
+import com.g22.orbitsoundkotlin.data.local.entities.OutboxEntity
+import com.g22.orbitsoundkotlin.data.local.entities.OutboxOperationType
+import com.g22.orbitsoundkotlin.data.local.entities.SyncStatus
+import com.g22.orbitsoundkotlin.data.local.entities.UserEntity
 import com.g22.orbitsoundkotlin.services.AuthResult
 import com.g22.orbitsoundkotlin.services.AuthService
 import com.g22.orbitsoundkotlin.services.IAuthService
+import com.google.gson.JsonObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,9 +22,12 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel(
     // Usa la abstracción y por defecto inyecta el Singleton explícito (GoF)
-    private val service: IAuthService = AuthService.Companion.getInstance()
+    private val service: IAuthService = AuthService.Companion.getInstance(),
+    private val context: Context? = null // Opcional para compatibilidad
 ) : ViewModel() {
 
+    private val db by lazy { context?.let { AppDatabase.getInstance(it) } }
+    
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
@@ -94,6 +106,10 @@ class AuthViewModel(
             when (val result = service.login(trimmedEmail, password)) {
                 is AuthResult.Success -> {
                     lastAuthResult = result
+                    
+                    // ✅ CONECTIVIDAD EVENTUAL: Registrar telemetría de login exitoso
+                    logLoginTelemetry(trimmedEmail, LoginType.EMAIL_PASSWORD, success = true, errorMessage = null)
+                    
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -102,6 +118,9 @@ class AuthViewModel(
                     }
                 }
                 is AuthResult.Error -> {
+                    // ✅ CONECTIVIDAD EVENTUAL: Registrar telemetría de login fallido
+                    logLoginTelemetry(trimmedEmail, LoginType.EMAIL_PASSWORD, success = false, errorMessage = result.message)
+                    
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -110,6 +129,24 @@ class AuthViewModel(
                     }
                 }
             }
+        }
+    }
+    
+    /**
+     * ✅ CONECTIVIDAD EVENTUAL: Registra telemetría de login en Room.
+     * TelemetrySyncWorker sincronizará a Firestore cuando haya red.
+     */
+    private fun logLoginTelemetry(email: String, loginType: LoginType, success: Boolean, errorMessage: String?) {
+        viewModelScope.launch {
+            db?.telemetryDao()?.insertTelemetry(
+                LoginTelemetryEntity(
+                    email = email,
+                    loginType = loginType,
+                    success = success,
+                    errorMessage = errorMessage,
+                    synced = false
+                )
+            )
         }
     }
 
@@ -153,6 +190,10 @@ class AuthViewModel(
             when (val result = service.signup(trimmedName, trimmedEmail, password)) {
                 is AuthResult.Success -> {
                     lastAuthResult = result
+                    
+                    // ✅ CONECTIVIDAD EVENTUAL: Crear perfil provisional local + Outbox
+                    createProvisionalProfile(result.user.id, trimmedEmail, trimmedName)
+                    
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -169,6 +210,40 @@ class AuthViewModel(
                     }
                 }
             }
+        }
+    }
+    
+    /**
+     * ✅ CONECTIVIDAD EVENTUAL: Crea perfil provisional en Room con estado PENDING_SYNC.
+     * ProfileReconciliationWorker reconciliará el UID cuando haya red.
+     */
+    private fun createProvisionalProfile(uid: String, email: String, name: String) {
+        viewModelScope.launch {
+            // Guardar usuario en Room
+            db?.userDao()?.insertUser(
+                UserEntity(
+                    uid = uid,
+                    email = email,
+                    name = name,
+                    syncStatus = SyncStatus.PENDING_SYNC,
+                    localUid = uid // Temporal hasta reconciliación
+                )
+            )
+            
+            // Agregar operación a Outbox
+            val payload = JsonObject().apply {
+                addProperty("email", email)
+                addProperty("name", name)
+                addProperty("uid", uid)
+            }
+            
+            db?.outboxDao()?.insertOperation(
+                OutboxEntity(
+                    operationType = OutboxOperationType.UPSERT_PROFILE,
+                    payload = payload,
+                    synced = false
+                )
+            )
         }
     }
 

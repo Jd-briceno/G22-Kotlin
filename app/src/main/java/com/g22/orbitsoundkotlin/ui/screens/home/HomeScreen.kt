@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.g22.orbitsoundkotlin.R
 import com.g22.orbitsoundkotlin.services.AuthUser
 import com.g22.orbitsoundkotlin.ui.viewmodels.HomeViewModel
+import com.g22.orbitsoundkotlin.ui.viewmodels.HomeViewModelFactory
 
 @Composable
 fun HomeScreen(
@@ -48,9 +49,12 @@ fun HomeScreen(
     onNavigateToLibrary: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {}
 ) {
-    val viewModel: HomeViewModel = viewModel()
-    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    // ✅ CONECTIVIDAD EVENTUAL: Inyectar Context al HomeViewModel
+    val viewModel: HomeViewModel = viewModel(
+        factory = HomeViewModelFactory(context)
+    )
+    val uiState by viewModel.uiState.collectAsState()
 
     DisposableEffect(Unit) {
         viewModel.onAppear()
