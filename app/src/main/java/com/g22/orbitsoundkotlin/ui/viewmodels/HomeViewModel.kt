@@ -2,6 +2,7 @@ package com.g22.orbitsoundkotlin.ui.viewmodels
 
 import android.content.Context
 import android.location.Location
+import android.util.Log
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,8 +19,12 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.text.Charsets
 
 private val DefaultStarColors = listOf(Color.White)
+private const val WEATHER_CACHE_FILE = "home_weather_cache.json"
+private const val WEATHER_CACHE_LOG_TAG = "HomeWeatherCache"
 
 data class HomeUiState(
     val isLoadingWeather: Boolean = false,
@@ -159,6 +164,8 @@ class HomeViewModel(
                     // Fallback si no hay context
                     weatherService.fetchWeather(lat, lon)
                 }
+
+                persistWeatherToFile(context, weather)
                 
                 latestWeather = weather
                 latestLocationError = false
@@ -173,6 +180,21 @@ class HomeViewModel(
             } catch (ex: Exception) {
                 latestLocationError = true
                 publisher.notify(HomeEvent.LocationErrorChanged(true))
+
+                val cachedWeather = readWeatherFromFile(context)
+                if (cachedWeather != null) {
+                    latestWeather = cachedWeather
+                    publisher.notify(HomeEvent.WeatherUpdated(cachedWeather))
+                    _uiState.update {
+                        it.copy(
+                            weather = cachedWeather,
+                            isLoadingWeather = false,
+                            error = ex.message
+                        )
+                    }
+                    return@launch
+                }
+
                 _uiState.update {
                     it.copy(
                         isLoadingWeather = false,
@@ -195,6 +217,42 @@ class HomeViewModel(
         previousColors = previous
         currentColors = newColors
         publisher.notify(HomeEvent.StarColorsTransition(previous, newColors))
+    }
+
+    private suspend fun persistWeatherToFile(context: Context, weather: Weather) {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val json = JSONObject().apply {
+                    put("temperatureC", weather.temperatureC)
+                    put("description", weather.description)
+                    put("condition", weather.condition)
+                }
+                context.openFileOutput(WEATHER_CACHE_FILE, Context.MODE_PRIVATE).use { output ->
+                    output.write(json.toString().toByteArray(Charsets.UTF_8))
+                }
+            }.onFailure { throwable ->
+                if (throwable is CancellationException) throw throwable
+                Log.w(WEATHER_CACHE_LOG_TAG, "Unable to persist weather snapshot", throwable)
+            }
+        }
+    }
+
+    private suspend fun readWeatherFromFile(context: Context): Weather? {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                context.openFileInput(WEATHER_CACHE_FILE).bufferedReader().use { it.readText() }
+            }.mapCatching { raw ->
+                val json = JSONObject(raw)
+                Weather(
+                    temperatureC = json.getDouble("temperatureC"),
+                    description = json.getString("description"),
+                    condition = json.getString("condition")
+                )
+            }.onFailure { throwable ->
+                if (throwable is CancellationException) throw throwable
+                Log.w(WEATHER_CACHE_LOG_TAG, "Unable to read cached weather snapshot", throwable)
+            }.getOrNull()
+        }
     }
 
     private fun triggerLightningPulse() {
@@ -236,7 +294,7 @@ object WeatherService {
                 fallback.random()
             }
     }
-
+    // 1. MULTI-THREAD...Corrutina con un dispatcher
     private suspend fun fetchFromApi(lat: Double, lon: Double): Weather = withContext(Dispatchers.IO) {
         val endpoint =
             "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current_weather=true&timezone=auto&temperature_unit=celsius"

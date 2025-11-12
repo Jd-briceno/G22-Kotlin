@@ -3,6 +3,7 @@ package com.g22.orbitsoundkotlin.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.data.repositories.InterestsRepository
+import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,7 +15,8 @@ import kotlinx.coroutines.launch
  * Usa InterestsRepository con versionado y outbox pattern.
  */
 class InterestsViewModel(
-    private val interestsRepository: InterestsRepository
+    private val interestsRepository: InterestsRepository,
+    private val preferencesRepository: UserPreferencesRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InterestsUiState())
@@ -23,19 +25,37 @@ class InterestsViewModel(
     /**
      * Carga intereses del usuario al inicializar.
      */
+    // MULTI-THREADING 1.3 Una input/output y una en main
     fun loadInterests(userId: String) {
-        viewModelScope.launch {
+        viewModelScope.launch { //corrutina main
             _uiState.update { it.copy(isLoading = true) }
 
-            val interests = interestsRepository.getInterests(userId)
+            val cachedPreferences = preferencesRepository?.getLastSelectedInterests().orEmpty()
+            if (cachedPreferences.isNotEmpty()) {
+                _uiState.update {
+                    it.copy(
+                        selectedInterests = cachedPreferences,
+                        error = null
+                    )
+                }
+            }
+
+            val interests = interestsRepository.getInterests(userId) // parte:I/O
+            val finalSelection = when {
+                !interests.isNullOrEmpty() -> interests
+                cachedPreferences.isNotEmpty() -> cachedPreferences
+                else -> emptyList()
+            }
 
             _uiState.update {
                 it.copy(
                     isLoading = false,
-                    selectedInterests = interests ?: emptyList(),
+                    selectedInterests = finalSelection,
                     error = null
                 )
             }
+
+            preferencesRepository?.saveLastSelectedInterests(finalSelection)
         }
     }
 
@@ -53,6 +73,7 @@ class InterestsViewModel(
 
             try {
                 interestsRepository.saveInterests(userId, interests)
+                preferencesRepository?.saveLastSelectedInterests(interests)
 
                 _uiState.update {
                     it.copy(

@@ -36,8 +36,9 @@ import com.g22.orbitsoundkotlin.analytics.MusicAnalytics
 import com.g22.orbitsoundkotlin.services.AuthResult
 import com.g22.orbitsoundkotlin.services.AuthService
 import com.g22.orbitsoundkotlin.services.AuthUser
-import com.g22.orbitsoundkotlin.data.RememberSettings
 import com.g22.orbitsoundkotlin.data.UserPreferencesRepository
+import com.g22.orbitsoundkotlin.data.local.AppDatabase
+import com.g22.orbitsoundkotlin.data.repositories.InterestsRepository
 import com.g22.orbitsoundkotlin.data.userPreferencesStore
 import com.g22.orbitsoundkotlin.ui.viewmodels.AuthViewModelFactory
 import com.g22.orbitsoundkotlin.ui.screens.home.HomeScreen
@@ -53,6 +54,8 @@ import com.g22.orbitsoundkotlin.ui.screens.emotions.StellarEmotionsScreen
 import com.g22.orbitsoundkotlin.ui.screens.emotions.ConstellationsScreen
 import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 import com.g22.orbitsoundkotlin.utils.SyncManager
+import com.g22.orbitsoundkotlin.ui.viewmodels.InterestsViewModel
+import com.g22.orbitsoundkotlin.ui.viewmodels.InterestsViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,25 +83,11 @@ private fun OrbitSoundApp() {
     val coroutineScope = rememberCoroutineScope()
     val authService = remember { AuthService.getInstance() }
     val context = LocalContext.current
-    val userPreferencesRepository = remember { UserPreferencesRepository(context.userPreferencesStore) }
-    val rememberSettings by userPreferencesRepository.rememberSettings.collectAsState(initial = RememberSettings())
     // ✅ CONECTIVIDAD EVENTUAL: Inyectar Context al AuthViewModel
     val authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(context)
     )
     val authUiState by authViewModel.uiState.collectAsState()
-
-    var rememberMeChecked by remember { mutableStateOf(rememberSettings.rememberMe) }
-
-    LaunchedEffect(rememberSettings.rememberMe) {
-        rememberMeChecked = rememberSettings.rememberMe
-    }
-
-    LaunchedEffect(rememberSettings.email) {
-        if (rememberSettings.rememberMe && authUiState.email.isBlank()) {
-            authViewModel.onEmailChange(rememberSettings.email)
-        }
-    }
 
     val googleClientId = remember {
         val resId = context.resources.getIdentifier(
@@ -234,19 +223,12 @@ private fun OrbitSoundApp() {
             ) { success ->
                 handleAuthSuccess(success)
             }
-        },
-        rememberMeValue = rememberMeChecked,
-        onRememberMeChange = { rememberMeChecked = it }
+        }
     )
 
     val onAuthCompleted = {
         val success = authViewModel.latestAuthResult()
         if (success != null) {
-            val emailForSave = authViewModel.uiState.value.email.trim()
-            coroutineScope.launch {
-                val storedEmail = if (rememberMeChecked) emailForSave else ""
-                userPreferencesRepository.updateRememberMe(rememberMeChecked, storedEmail)
-            }
             handleAuthSuccess(success)
         } else {
             coroutineScope.launch {
@@ -291,12 +273,24 @@ private fun OrbitSoundApp() {
                 }
             }
             is AppDestination.Interests -> {
+                val context = LocalContext.current
+                val interestsFactory = remember(context) {
+                    val database = AppDatabase.getInstance(context)
+                    val interestsRepository = InterestsRepository(database)
+                    val preferencesRepository = UserPreferencesRepository(context.userPreferencesStore)
+                    InterestsViewModelFactory(
+                        interestsRepository = interestsRepository,
+                        preferencesRepository = preferencesRepository
+                    )
+                }
+                val interestsViewModel: InterestsViewModel = viewModel(factory = interestsFactory)
+
                 InterestSelectionScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
                     userId = current.user.id,
-                    viewModel = null, // TODO: Inyectar ViewModel con Context
+                    viewModel = interestsViewModel,
                     onBack = {
                         destination = AppDestination.Login
                     },

@@ -8,9 +8,7 @@ data class AuthScreenCallbacks(
     val onForgotPassword: (String) -> Unit = {},
     val onGoogleSignIn: () -> Unit = {},
     val onAppleSignIn: () -> Unit = {},
-    val onSpotifySignIn: () -> Unit = {},
-    val rememberMeValue: Boolean = false,
-    val onRememberMeChange: (Boolean) -> Unit = {}
+    val onSpotifySignIn: () -> Unit = {}
 )
 
 val LocalAuthScreenCallbacks = staticCompositionLocalOf { AuthScreenCallbacks() }
