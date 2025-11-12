@@ -66,11 +66,6 @@ fun LoginScreen(
     val callbacks = LocalAuthScreenCallbacks.current
 
     var showPassword by rememberSaveable { mutableStateOf(false) }
-    var rememberMeChecked by rememberSaveable { mutableStateOf(callbacks.rememberMeValue) }
-
-    LaunchedEffect(callbacks.rememberMeValue) {
-        rememberMeChecked = callbacks.rememberMeValue
-    }
 
     LaunchedEffect(uiState.authSuccess) {
         if (uiState.authSuccess) {
@@ -188,12 +183,9 @@ fun LoginScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                Checkbox(
-                    checked = rememberMeChecked,
-                    onCheckedChange = { checked ->
-                        rememberMeChecked = checked
-                        callbacks.onRememberMeChange(checked)
-                    },
+            Checkbox(
+                checked = uiState.rememberMe,
+                onCheckedChange = viewModel::onRememberMeChange,
                     enabled = !uiState.isLoading,
                     colors = CheckboxDefaults.colors(
                         checkedColor = focusColor,

@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.data.local.AppDatabase
+import com.g22.orbitsoundkotlin.data.local.RememberMeEntry
+import com.g22.orbitsoundkotlin.data.local.RememberMeStorage
 import com.g22.orbitsoundkotlin.data.local.entities.LoginTelemetryEntity
 import com.g22.orbitsoundkotlin.data.local.entities.LoginType
 import com.g22.orbitsoundkotlin.data.local.entities.OutboxEntity
@@ -23,15 +25,28 @@ import kotlinx.coroutines.launch
 class AuthViewModel(
     // Usa la abstracción y por defecto inyecta el Singleton explícito (GoF)
     private val service: IAuthService = AuthService.Companion.getInstance(),
-    private val context: Context? = null // Opcional para compatibilidad
+    private val context: Context? = null, // Opcional para compatibilidad
+    private val rememberMeStorage: RememberMeStorage? = context?.let { RememberMeStorage(it) }
 ) : ViewModel() {
 
     private val db by lazy { context?.let { AppDatabase.getInstance(it) } }
+    private val storedRememberMe: RememberMeEntry? = rememberMeStorage?.load()
     
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     private var lastAuthResult: AuthResult.Success? = null
+
+    init {
+        storedRememberMe?.takeIf { it.remember }?.let { entry ->
+            _uiState.update {
+                it.copy(
+                    email = entry.email,
+                    rememberMe = true
+                )
+            }
+        }
+    }
 
     fun onEmailChange(value: String) {
         _uiState.update {
@@ -40,6 +55,11 @@ class AuthViewModel(
                 emailError = null,
                 genericError = null
             )
+        }
+
+        val trimmed = value.trim()
+        if (_uiState.value.rememberMe) {
+            rememberMeStorage?.save(remember = true, email = trimmed)
         }
     }
 
@@ -69,6 +89,16 @@ class AuthViewModel(
                 name = value,
                 genericError = null
             )
+        }
+    }
+
+    fun onRememberMeChange(remember: Boolean) {
+        _uiState.update { it.copy(rememberMe = remember) }
+        if (!remember) {
+            rememberMeStorage?.clear()
+        } else {
+            val currentEmail = _uiState.value.email.trim()
+            rememberMeStorage?.save(remember = true, email = currentEmail)
         }
     }
 
@@ -109,6 +139,7 @@ class AuthViewModel(
                     
                     // ✅ CONECTIVIDAD EVENTUAL: Registrar telemetría de login exitoso
                     logLoginTelemetry(trimmedEmail, LoginType.EMAIL_PASSWORD, success = true, errorMessage = null)
+                    handleRememberMePersistence(trimmedEmail)
                     
                     _uiState.update {
                         it.copy(
@@ -173,8 +204,8 @@ class AuthViewModel(
             }
             return
         }
-
-        viewModelScope.launch {
+        // 1.2 MULTI-THREADING
+        viewModelScope.launch { //primera corrutina
             _uiState.update {
                 it.copy(
                     email = trimmedEmail,
@@ -191,8 +222,8 @@ class AuthViewModel(
                 is AuthResult.Success -> {
                     lastAuthResult = result
                     
-                    // ✅ CONECTIVIDAD EVENTUAL: Crear perfil provisional local + Outbox
-                    createProvisionalProfile(result.user.id, trimmedEmail, trimmedName)
+                    createProvisionalProfile(result.user.id, trimmedEmail, trimmedName) //segunda corrutina
+                    handleRememberMePersistence(trimmedEmail)
                     
                     _uiState.update {
                         it.copy(
@@ -218,9 +249,9 @@ class AuthViewModel(
      * ProfileReconciliationWorker reconciliará el UID cuando haya red.
      */
     private fun createProvisionalProfile(uid: String, email: String, name: String) {
-        viewModelScope.launch {
+        viewModelScope.launch { //segunda corrutina
             // Guardar usuario en Room
-            db?.userDao()?.insertUser(
+            db?.userDao()?.insertUser( //Input/Output insertar en room
                 UserEntity(
                     uid = uid,
                     email = email,
@@ -256,6 +287,15 @@ class AuthViewModel(
     }
 
     fun latestAuthResult(): AuthResult.Success? = lastAuthResult
+
+    private fun handleRememberMePersistence(email: String) {
+        val remember = _uiState.value.rememberMe
+        if (remember) {
+            rememberMeStorage?.save(remember = true, email = email)
+        } else {
+            rememberMeStorage?.clear()
+        }
+    }
 
     private fun validateEmail(value: String): String? {
         val email = value.trim()
@@ -317,6 +357,7 @@ class AuthViewModel(
         val password: String = "",
         val confirmPassword: String = "",
         val name: String = "",
+        val rememberMe: Boolean = false,
         val isLoading: Boolean = false,
         val emailError: String? = null,
         val passwordError: String? = null,
