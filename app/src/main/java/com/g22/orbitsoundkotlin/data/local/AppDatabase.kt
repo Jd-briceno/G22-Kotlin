@@ -13,6 +13,7 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
  * Implementa el patrón Outbox y SWR para todas las operaciones.
  * 
  * Version 2: Added Library cache entities (LibrarySectionCacheEntity, SearchHistoryEntity)
+ * Version 3: Added SessionActivityLogEntity for session activity journal feature
  */
 @Database(
     entities = [
@@ -24,12 +25,17 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
         OutboxEntity::class,
         // Library cache entities (v2)
         LibrarySectionCacheEntity::class,
-        SearchHistoryEntity::class
+        SearchHistoryEntity::class,
+        // Session activity logs (v3)
+        SessionActivityLogEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
-@TypeConverters(StringListConverter::class, JsonConverter::class)
+@TypeConverters(
+    StringListConverter::class, 
+    JsonConverter::class
+)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun userDao(): UserDao
@@ -39,6 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun weatherCacheDao(): WeatherCacheDao
     abstract fun outboxDao(): OutboxDao
     abstract fun libraryCacheDao(): LibraryCacheDao
+    abstract fun sessionActivityLogDao(): SessionActivityLogDao
 
     companion object {
         @Volatile
