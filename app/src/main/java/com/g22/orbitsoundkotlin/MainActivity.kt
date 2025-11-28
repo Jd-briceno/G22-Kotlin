@@ -441,7 +441,7 @@ private fun OrbitSoundApp() {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         androidx.compose.material3.Text(
-                            text = "Captain's Log - Feature Test",
+                            text = "Activity Stats - Feature Test",
                             style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
                             color = androidx.compose.ui.graphics.Color.White,
                             modifier = Modifier.padding(bottom = 16.dp)
