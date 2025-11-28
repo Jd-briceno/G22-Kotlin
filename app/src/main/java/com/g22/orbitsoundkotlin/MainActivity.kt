@@ -9,8 +9,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -60,6 +64,12 @@ import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 import com.g22.orbitsoundkotlin.utils.SyncManager
 import com.g22.orbitsoundkotlin.ui.viewmodels.InterestsViewModel
 import com.g22.orbitsoundkotlin.ui.viewmodels.InterestsViewModelFactory
+import com.g22.orbitsoundkotlin.ui.viewmodels.CaptainsLogViewModel
+import com.g22.orbitsoundkotlin.ui.viewmodels.CaptainsLogViewModelFactory
+import com.g22.orbitsoundkotlin.ui.viewmodels.ActivityPeriod
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -333,6 +343,9 @@ private fun OrbitSoundApp() {
                         },
                         onNavigateToProfile = {
                             destination = AppDestination.Profile(current.user)
+                        },
+                        onNavigateToCaptainsLog = {
+                            destination = AppDestination.CaptainsLog(current.user)
                         }
                     )
                 }
@@ -400,6 +413,98 @@ private fun OrbitSoundApp() {
                     }
                 )
             }
+            is AppDestination.CaptainsLog -> {
+                // TODO: Implementar CaptainsLogScreen en el BLOQUE VIEW
+                // Por ahora, mostramos un placeholder temporal que procesa datos para verificar la FEATURE
+                val context = LocalContext.current
+                val userId = current.user.id
+                val userEmail = current.user.email
+                val viewModel: CaptainsLogViewModel = viewModel(
+                    factory = CaptainsLogViewModelFactory(context, userId, userEmail)
+                )
+                val uiState by viewModel.uiState.collectAsState()
+                
+                // Cargar logs al entrar
+                LaunchedEffect(Unit) {
+                    viewModel.loadSessionLogs(ActivityPeriod.WEEK)
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        androidx.compose.material3.Text(
+                            text = "Captain's Log - Feature Test",
+                            style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
+                            color = androidx.compose.ui.graphics.Color.White,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        if (uiState.isLoading) {
+                            androidx.compose.material3.CircularProgressIndicator()
+                            androidx.compose.material3.Text(
+                                text = "Procesando datos...",
+                                color = androidx.compose.ui.graphics.Color.White,
+                                modifier = Modifier.padding(top = 16.dp)
+                            )
+                        } else {
+                            androidx.compose.material3.Text(
+                                text = "Sesiones encontradas: ${uiState.sessionLogs.size}",
+                                color = androidx.compose.ui.graphics.Color.White,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            
+                            if (uiState.error != null) {
+                                androidx.compose.material3.Text(
+                                    text = "Error: ${uiState.error}",
+                                    color = androidx.compose.ui.graphics.Color.Red,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                            }
+                            
+                            if (uiState.sessionLogs.isEmpty()) {
+                                androidx.compose.material3.Text(
+                                    text = "No se encontraron sesiones.\n\nVerifica:\n- login_telemetry tiene logins exitosos\n- outbox tiene operaciones\n- search_history tiene búsquedas",
+                                    color = androidx.compose.ui.graphics.Color.Yellow,
+                                    modifier = Modifier.padding(top = 16.dp)
+                                )
+                            } else {
+                                androidx.compose.material3.Text(
+                                    text = "✅ FEATURE FUNCIONANDO!\n\nRevisa la tabla session_activity_logs\nen Database Inspector",
+                                    color = androidx.compose.ui.graphics.Color.Green,
+                                    modifier = Modifier.padding(top = 16.dp)
+                                )
+                                
+                                // Mostrar detalles de las primeras 3 sesiones
+                                uiState.sessionLogs.take(3).forEachIndexed { index, log ->
+                                    androidx.compose.material3.Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 8.dp)
+                                    ) {
+                                        androidx.compose.material3.Text(
+                                            text = "Sesión ${index + 1}:\n" +
+                                                    "Duración: ${log.durationMinutes} min\n" +
+                                                    "Acciones: ${log.totalActions}\n" +
+                                                    "Búsquedas: ${log.totalSearches}\n" +
+                                                    "Login: ${log.loginType}",
+                                            color = androidx.compose.ui.graphics.Color.Black,
+                                            modifier = Modifier.padding(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -413,4 +518,5 @@ private sealed interface AppDestination {
     data class Constellations(val user: AuthUser) : AppDestination
     data class Library(val user: AuthUser) : AppDestination
     data class Profile(val user: AuthUser) : AppDestination
+    data class CaptainsLog(val user: AuthUser) : AppDestination
 }
