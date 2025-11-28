@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -66,6 +67,11 @@ import com.g22.orbitsoundkotlin.ui.viewmodels.InterestsViewModel
 import com.g22.orbitsoundkotlin.ui.viewmodels.InterestsViewModelFactory
 import com.g22.orbitsoundkotlin.ui.viewmodels.CaptainsLogViewModel
 import com.g22.orbitsoundkotlin.ui.viewmodels.CaptainsLogViewModelFactory
+import com.g22.orbitsoundkotlin.ui.screens.activitystats.ActivityStatsScreen
+import com.g22.orbitsoundkotlin.ui.screens.activitystats.ActivityStatsPinSetupScreen
+import com.g22.orbitsoundkotlin.ui.screens.activitystats.ActivityStatsPinUnlockScreen
+import com.g22.orbitsoundkotlin.ui.screens.activitystats.ActivityStatsPinResetScreen
+import com.g22.orbitsoundkotlin.ui.screens.activitystats.ActivityStatsPinStorage
 import com.g22.orbitsoundkotlin.ui.viewmodels.ActivityPeriod
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Card
@@ -414,94 +420,77 @@ private fun OrbitSoundApp() {
                 )
             }
             is AppDestination.CaptainsLog -> {
-                // TODO: Implementar CaptainsLogScreen en el BLOQUE VIEW
-                // Por ahora, mostramos un placeholder temporal que procesa datos para verificar la FEATURE
                 val context = LocalContext.current
-                val userId = current.user.id
-                val userEmail = current.user.email
-                val viewModel: CaptainsLogViewModel = viewModel(
-                    factory = CaptainsLogViewModelFactory(context, userId, userEmail)
-                )
-                val uiState by viewModel.uiState.collectAsState()
+                val pinStorage = remember { ActivityStatsPinStorage(context) }
                 
-                // Cargar logs al entrar
+                // Estado del flujo de PIN
+                var pinState by remember { mutableStateOf<PinState?>(null) }
+                
+                // Determinar estado inicial
                 LaunchedEffect(Unit) {
-                    viewModel.loadSessionLogs(ActivityPeriod.WEEK)
+                    pinState = if (pinStorage.hasPin()) {
+                        PinState.Unlock
+                    } else {
+                        PinState.Setup
+                    }
                 }
                 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        androidx.compose.material3.Text(
-                            text = "Activity Stats - Feature Test",
-                            style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
-                            color = androidx.compose.ui.graphics.Color.White,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        
-                        if (uiState.isLoading) {
-                            androidx.compose.material3.CircularProgressIndicator()
-                            androidx.compose.material3.Text(
-                                text = "Procesando datos...",
-                                color = androidx.compose.ui.graphics.Color.White,
-                                modifier = Modifier.padding(top = 16.dp)
+                when (val state = pinState) {
+                    null -> {
+                        // Loading state
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(androidx.compose.ui.graphics.Color(0xFF010B19))
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.align(Alignment.Center),
+                                color = androidx.compose.ui.graphics.Color(0xFF5099BA)
                             )
-                        } else {
-                            androidx.compose.material3.Text(
-                                text = "Sesiones encontradas: ${uiState.sessionLogs.size}",
-                                color = androidx.compose.ui.graphics.Color.White,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            
-                            if (uiState.error != null) {
-                                androidx.compose.material3.Text(
-                                    text = "Error: ${uiState.error}",
-                                    color = androidx.compose.ui.graphics.Color.Red,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-                            }
-                            
-                            if (uiState.sessionLogs.isEmpty()) {
-                                androidx.compose.material3.Text(
-                                    text = "No se encontraron sesiones.\n\nVerifica:\n- login_telemetry tiene logins exitosos\n- outbox tiene operaciones\n- search_history tiene búsquedas",
-                                    color = androidx.compose.ui.graphics.Color.Yellow,
-                                    modifier = Modifier.padding(top = 16.dp)
-                                )
-                            } else {
-                                androidx.compose.material3.Text(
-                                    text = "✅ FEATURE FUNCIONANDO!\n\nRevisa la tabla session_activity_logs\nen Database Inspector",
-                                    color = androidx.compose.ui.graphics.Color.Green,
-                                    modifier = Modifier.padding(top = 16.dp)
-                                )
-                                
-                                // Mostrar detalles de las primeras 3 sesiones
-                                uiState.sessionLogs.take(3).forEachIndexed { index, log ->
-                                    androidx.compose.material3.Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 8.dp)
-                                    ) {
-                                        androidx.compose.material3.Text(
-                                            text = "Sesión ${index + 1}:\n" +
-                                                    "Duración: ${log.durationMinutes} min\n" +
-                                                    "Acciones: ${log.totalActions}\n" +
-                                                    "Búsquedas: ${log.totalSearches}\n" +
-                                                    "Login: ${log.loginType}",
-                                            color = androidx.compose.ui.graphics.Color.Black,
-                                            modifier = Modifier.padding(16.dp)
-                                        )
-                                    }
-                                }
-                            }
                         }
+                    }
+                    PinState.Setup -> {
+                        ActivityStatsPinSetupScreen(
+                            pinStorage = pinStorage,
+                            onPinSet = {
+                                pinState = PinState.Unlocked
+                            },
+                            onBack = {
+                                destination = AppDestination.Home(current.user)
+                            }
+                        )
+                    }
+                    PinState.Unlock -> {
+                        ActivityStatsPinUnlockScreen(
+                            pinStorage = pinStorage,
+                            onUnlocked = {
+                                pinState = PinState.Unlocked
+                            },
+                            onForgotPin = {
+                                pinState = PinState.Reset
+                            },
+                            onBack = {
+                                destination = AppDestination.Home(current.user)
+                            }
+                        )
+                    }
+                    PinState.Reset -> {
+                        ActivityStatsPinResetScreen(
+                            onPinReset = {
+                                pinStorage.clearPin()
+                                pinState = PinState.Setup
+                            },
+                            onCancel = {
+                                pinState = PinState.Unlock
+                            }
+                        )
+                    }
+                    PinState.Unlocked -> {
+                        ActivityStatsScreen(
+                            onBack = {
+                                destination = AppDestination.Home(current.user)
+                            }
+                        )
                     }
                 }
             }
@@ -519,4 +508,14 @@ private sealed interface AppDestination {
     data class Library(val user: AuthUser) : AppDestination
     data class Profile(val user: AuthUser) : AppDestination
     data class CaptainsLog(val user: AuthUser) : AppDestination
+}
+
+/**
+ * Estados del flujo de PIN para Activity Stats.
+ */
+private enum class PinState {
+    Setup,      // Primera vez: configurar PIN
+    Unlock,     // Entradas posteriores: desbloquear con PIN
+    Reset,      // Reset: confirmar contraseña
+    Unlocked    // Desbloqueado: mostrar ActivityStatsScreen
 }
