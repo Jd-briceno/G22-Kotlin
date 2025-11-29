@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -516,7 +517,8 @@ fun PlayerPill(
     artist: String,
     onPrev: () -> Unit,
     onPlayPause: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    onAresClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -587,6 +589,25 @@ fun PlayerPill(
                 IconButton(onClick = onPrev) { Icon(Icons.Filled.SkipPrevious, null, tint = Color(0xFFB0BEC5)) }
                 IconButton(onClick = onPlayPause) { Icon(Icons.Filled.PlayArrow, null, tint = Color(0xFFB0BEC5)) }
                 IconButton(onClick = onNext) { Icon(Icons.Filled.SkipNext, null, tint = Color(0xFFB0BEC5)) }
+            }
+
+            Spacer(Modifier.width(4.dp))
+            
+            // Botón de Ares: Modo Emocional
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF7C4DFF))
+                    .clickable(onClick = onAresClick),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Mic,
+                    contentDescription = "Ares Mode",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
