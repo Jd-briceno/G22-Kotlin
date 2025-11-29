@@ -13,8 +13,8 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
  * Implementa el patrón Outbox y SWR para todas las operaciones.
  * 
  * Version 2: Added Library cache entities (LibrarySectionCacheEntity, SearchHistoryEntity)
- * Version 3: Added EmotionLogEntity for offline emotion logging
  * Version 3: Added SessionActivityLogEntity for session activity journal feature
+ * Version 4: Added EmotionLogEntity for offline emotion logging
  */
 @Database(
     entities = [
@@ -27,12 +27,12 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
         // Library cache entities (v2)
         LibrarySectionCacheEntity::class,
         SearchHistoryEntity::class,
-        // Emotion logs (v3)
-        EmotionLogEntity::class
+        // Emotion logs (v4)
+        EmotionLogEntity::class,
         // Session activity logs (v3)
         SessionActivityLogEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(StringListConverter::class, JsonConverter::class, EmotionListConverter::class)
