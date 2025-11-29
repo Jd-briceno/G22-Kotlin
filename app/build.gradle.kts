@@ -25,6 +25,8 @@ android {
         buildConfigField("String", "SPOTIFY_CLIENT_SECRET", "\"${getSpotifyClientSecret()}\"")
         // 🔑 Variable de entorno para Straico (defínela en gradle.properties o como -PSTRAICO_API_KEY)
         buildConfigField("String", "STRAICO_API_KEY", "\"${getStraicoKey()}\"")
+        // 🔑 Variable de entorno para Gemini
+        buildConfigField("String", "GEMINI_API_KEY", "\"${getGeminiKey()}\"")
     }
 
     buildTypes {
@@ -138,4 +140,8 @@ fun getSpotifyClientSecret(): String {
 // Helper to fetch Straico key from project properties (or fallback placeholder). Define STRAICO_API_KEY in gradle.properties or pass -PSTRAICO_API_KEY.
 fun getStraicoKey(): String {
     return project.findProperty("STRAICO_API_KEY") as? String ?: "YOUR_STRAICO_API_KEY"
+}
+
+fun getGeminiKey(): String {
+    return project.findProperty("GEMINI_API_KEY") as? String ?: "YOUR_GEMINI_API_KEY"
 }

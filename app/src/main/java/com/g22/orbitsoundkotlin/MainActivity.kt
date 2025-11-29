@@ -352,6 +352,9 @@ private fun OrbitSoundApp() {
                         },
                         onNavigateToCaptainsLog = {
                             destination = AppDestination.CaptainsLog(current.user)
+                        },
+                        onNavigateToAres = {
+                            destination = AppDestination.Ares(current.user)
                         }
                     )
                 }
@@ -415,6 +418,15 @@ private fun OrbitSoundApp() {
             is AppDestination.Profile -> {
                 ProfileScreen(
                     onNavigateToHome = {
+                        destination = AppDestination.Home(current.user)
+                    }
+                )
+            }
+            is AppDestination.Ares -> {
+                val aresViewModel: com.g22.orbitsoundkotlin.ui.viewmodels.AresViewModel = viewModel()
+                com.g22.orbitsoundkotlin.ui.screens.ares.AresScreen(
+                    viewModel = aresViewModel,
+                    onBack = {
                         destination = AppDestination.Home(current.user)
                     }
                 )
@@ -508,6 +520,7 @@ private sealed interface AppDestination {
     data class Library(val user: AuthUser) : AppDestination
     data class Profile(val user: AuthUser) : AppDestination
     data class CaptainsLog(val user: AuthUser) : AppDestination
+    data class Ares(val user: AuthUser) : AppDestination
 }
 
 /**
