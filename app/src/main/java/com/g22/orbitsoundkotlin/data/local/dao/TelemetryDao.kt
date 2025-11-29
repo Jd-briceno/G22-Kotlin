@@ -34,5 +34,15 @@ interface TelemetryDao {
 
     @Query("DELETE FROM login_telemetry")
     suspend fun clearAllTelemetry()
+    
+    /**
+     * Obtiene todos los logins (sincronizados y no sincronizados) en un rango de tiempo.
+     * Útil para procesar historial completo de sesiones.
+     */
+    @Query("SELECT * FROM login_telemetry WHERE timestamp >= :startTime AND timestamp <= :endTime")
+    suspend fun getTelemetryInTimeRange(
+        startTime: Long,
+        endTime: Long
+    ): List<LoginTelemetryEntity>
 }
 

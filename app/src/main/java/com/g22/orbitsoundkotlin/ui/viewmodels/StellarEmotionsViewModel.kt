@@ -12,6 +12,8 @@ import com.g22.orbitsoundkotlin.data.FacialEmotionAnalyzer
 import com.g22.orbitsoundkotlin.data.OfflineFirstEmotionRepository
 import com.g22.orbitsoundkotlin.models.EmotionModel
 import com.g22.orbitsoundkotlin.utils.SyncEventManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class StellarEmotionsViewModel(
     private val userId: String,
@@ -88,21 +91,28 @@ class StellarEmotionsViewModel(
 
     private fun analyzeEmotionFromPhoto(uri: Uri) {
 
+        // Launch on Main dispatcher (viewModelScope default) for UI state management
         viewModelScope.launch {
             _isAnalyzingEmotion.value = true
             _uiState.value = UiState.Loading
             try {
                 Log.d(TAG, "Starting emotion analysis...")
-                val analyzer = FacialEmotionAnalyzer(context)
-                val detectedEmotion = analyzer.analyzeEmotion(uri)
+
+                // Perform emotion analysis on IO dispatcher (network/file operations)
+                val detectedEmotion = withContext(Dispatchers.IO) {
+                    val analyzer = FacialEmotionAnalyzer(context)
+                    analyzer.analyzeEmotion(uri)
+                }
 
                 if (detectedEmotion != null) {
                     Log.d(TAG, "Emotion detected: $detectedEmotion")
 
-                    // Create EmotionModel with detected emotion
-                    val emotionModel = createEmotionModelFromDetection(detectedEmotion)
+                    // Create EmotionModel on Default dispatcher (CPU-bound work)
+                    val emotionModel = withContext(Dispatchers.Default) {
+                        createEmotionModelFromDetection(detectedEmotion)
+                    }
 
-                    // Log the emotion to database with "camera" as source
+                    // Log the emotion to database (IO operation)
                     logDetectedEmotion(emotionModel)
                 } else {
                     Log.e(TAG, "Failed to detect emotion")
@@ -148,6 +158,14 @@ class StellarEmotionsViewModel(
 
             val emotionLog = emotionLogFactory.createEmotionLog(userId, listOf(emotionModel))
             val result = repository.logEmotions(userId, emotionLog)
+            // Perform database operations on IO dispatcher
+            val result = withContext(Dispatchers.IO) {
+                val firestoreRepo = repository as? FirestoreEmotionRepository
+                    ?: throw IllegalStateException("Repository must be FirestoreEmotionRepository")
+
+                val emotionLog = firestoreRepo.createEmotionLog(userId, listOf(emotionModel))
+                repository.logEmotions(userId, emotionLog)
+            }
 
             if (result.isSuccess) {
                 Log.d(TAG, "Successfully logged detected emotion")
@@ -163,6 +181,14 @@ class StellarEmotionsViewModel(
 
                 // Notify navigation - the emotion is saved (locally if offline, will sync later)
                 _event.emit(Event.NavigateNext)
+
+                // Emit events in parallel using async for better performance
+                val emotionDetectedJob = viewModelScope.async { _event.emit(Event.EmotionDetected(emotionModel.name)) }
+                val navigateJob = viewModelScope.async { _event.emit(Event.NavigateNext) }
+
+                // Wait for both emissions to complete
+                emotionDetectedJob.await()
+                navigateJob.await()
             } else {
                 val exception = result.exceptionOrNull()
                 Log.e(TAG, "Failed to log detected emotion", exception)
@@ -226,13 +252,69 @@ class StellarEmotionsViewModel(
                     val errorMessage = exception?.message ?: "Failed to save emotions"
                     _uiState.value = UiState.Error(errorMessage)
                     _event.emit(Event.ShowError(errorMessage))
+        // Perform validation checks
+        viewModelScope.launch {
+            // Run validations on Default dispatcher (CPU-bound)
+            val validationResult = withContext(Dispatchers.Default) {
+                when {
+                    selectedEmotions.isEmpty() -> ValidationResult.EmptyEmotions
+                    userId.isBlank() -> ValidationResult.EmptyUserId
+                    else -> ValidationResult.Valid
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Exception in onReadyToShipClicked", e)
-                _uiState.value = UiState.Error(e.message ?: "Unknown error")
-                _event.emit(Event.ShowError(e.message ?: "Unknown error occurred"))
+            }
+
+            when (validationResult) {
+                ValidationResult.EmptyEmotions -> {
+                    _event.emit(Event.ShowError("Please select at least one emotion"))
+                    return@launch
+                }
+                ValidationResult.EmptyUserId -> {
+                    Log.e(TAG, "User ID is blank, cannot proceed")
+                    _event.emit(Event.ShowError("User ID is missing, please log in again"))
+                    return@launch
+                }
+                ValidationResult.Valid -> {
+                    // Continue with logging
+                    _uiState.value = UiState.Loading
+                    try {
+                        Log.d(TAG, "Creating emotion log for user $userId")
+
+                        // Perform database operations on IO dispatcher
+                        val result = withContext(Dispatchers.IO) {
+                            val firestoreRepo = repository as? FirestoreEmotionRepository
+                                ?: throw IllegalStateException("Repository must be FirestoreEmotionRepository")
+
+                            // Create emotion log and save
+                            val emotionLog = firestoreRepo.createEmotionLog(userId, selectedEmotions)
+                            Log.d(TAG, "Created emotion log, calling repository")
+                            repository.logEmotions(userId, emotionLog)
+                        }
+
+                        if (result.isSuccess) {
+                            Log.d(TAG, "Successfully logged emotions")
+                            _uiState.value = UiState.Success
+                            _event.emit(Event.NavigateNext)
+                        } else {
+                            val exception = result.exceptionOrNull()
+                            Log.e(TAG, "Failed to log emotions", exception)
+                            val errorMessage = exception?.message ?: "Failed to save emotions"
+                            _uiState.value = UiState.Error(errorMessage)
+                            _event.emit(Event.ShowError(errorMessage))
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Exception in onReadyToShipClicked", e)
+                        _uiState.value = UiState.Error(e.message ?: "Unknown error")
+                        _event.emit(Event.ShowError(e.message ?: "Unknown error occurred"))
+                    }
+                }
             }
         }
+    }
+
+    private enum class ValidationResult {
+        Valid,
+        EmptyEmotions,
+        EmptyUserId
     }
 
     sealed class UiState {

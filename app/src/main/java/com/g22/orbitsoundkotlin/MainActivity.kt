@@ -8,9 +8,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -60,6 +65,17 @@ import com.g22.orbitsoundkotlin.ui.theme.OrbitSoundKotlinTheme
 import com.g22.orbitsoundkotlin.utils.SyncManager
 import com.g22.orbitsoundkotlin.ui.viewmodels.InterestsViewModel
 import com.g22.orbitsoundkotlin.ui.viewmodels.InterestsViewModelFactory
+import com.g22.orbitsoundkotlin.ui.viewmodels.CaptainsLogViewModel
+import com.g22.orbitsoundkotlin.ui.viewmodels.CaptainsLogViewModelFactory
+import com.g22.orbitsoundkotlin.ui.screens.activitystats.ActivityStatsScreen
+import com.g22.orbitsoundkotlin.ui.screens.activitystats.ActivityStatsPinSetupScreen
+import com.g22.orbitsoundkotlin.ui.screens.activitystats.ActivityStatsPinUnlockScreen
+import com.g22.orbitsoundkotlin.ui.screens.activitystats.ActivityStatsPinResetScreen
+import com.g22.orbitsoundkotlin.ui.screens.activitystats.ActivityStatsPinStorage
+import com.g22.orbitsoundkotlin.ui.viewmodels.ActivityPeriod
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -333,6 +349,9 @@ private fun OrbitSoundApp() {
                         },
                         onNavigateToProfile = {
                             destination = AppDestination.Profile(current.user)
+                        },
+                        onNavigateToCaptainsLog = {
+                            destination = AppDestination.CaptainsLog(current.user)
                         }
                     )
                 }
@@ -404,6 +423,81 @@ private fun OrbitSoundApp() {
                     }
                 )
             }
+            is AppDestination.CaptainsLog -> {
+                val context = LocalContext.current
+                val pinStorage = remember { ActivityStatsPinStorage(context) }
+                
+                // Estado del flujo de PIN
+                var pinState by remember { mutableStateOf<PinState?>(null) }
+                
+                // Determinar estado inicial
+                LaunchedEffect(Unit) {
+                    pinState = if (pinStorage.hasPin()) {
+                        PinState.Unlock
+                    } else {
+                        PinState.Setup
+                    }
+                }
+                
+                when (val state = pinState) {
+                    null -> {
+                        // Loading state
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(androidx.compose.ui.graphics.Color(0xFF010B19))
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.align(Alignment.Center),
+                                color = androidx.compose.ui.graphics.Color(0xFF5099BA)
+                            )
+                        }
+                    }
+                    PinState.Setup -> {
+                        ActivityStatsPinSetupScreen(
+                            pinStorage = pinStorage,
+                            onPinSet = {
+                                pinState = PinState.Unlocked
+                            },
+                            onBack = {
+                                destination = AppDestination.Home(current.user)
+                            }
+                        )
+                    }
+                    PinState.Unlock -> {
+                        ActivityStatsPinUnlockScreen(
+                            pinStorage = pinStorage,
+                            onUnlocked = {
+                                pinState = PinState.Unlocked
+                            },
+                            onForgotPin = {
+                                pinState = PinState.Reset
+                            },
+                            onBack = {
+                                destination = AppDestination.Home(current.user)
+                            }
+                        )
+                    }
+                    PinState.Reset -> {
+                        ActivityStatsPinResetScreen(
+                            onPinReset = {
+                                pinStorage.clearPin()
+                                pinState = PinState.Setup
+                            },
+                            onCancel = {
+                                pinState = PinState.Unlock
+                            }
+                        )
+                    }
+                    PinState.Unlocked -> {
+                        ActivityStatsScreen(
+                            onBack = {
+                                destination = AppDestination.Home(current.user)
+                            }
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -417,4 +511,15 @@ private sealed interface AppDestination {
     data class Constellations(val user: AuthUser) : AppDestination
     data class Library(val user: AuthUser) : AppDestination
     data class Profile(val user: AuthUser) : AppDestination
+    data class CaptainsLog(val user: AuthUser) : AppDestination
+}
+
+/**
+ * Estados del flujo de PIN para Activity Stats.
+ */
+private enum class PinState {
+    Setup,      // Primera vez: configurar PIN
+    Unlock,     // Entradas posteriores: desbloquear con PIN
+    Reset,      // Reset: confirmar contraseña
+    Unlocked    // Desbloqueado: mostrar ActivityStatsScreen
 }

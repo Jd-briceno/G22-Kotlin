@@ -47,7 +47,8 @@ fun HomeScreen(
     user: AuthUser,
     onNavigateToStellarEmotions: () -> Unit,
     onNavigateToLibrary: () -> Unit = {},
-    onNavigateToProfile: () -> Unit = {}
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToCaptainsLog: () -> Unit = {}
 ) {
     val context = LocalContext.current
     // ✅ CONECTIVIDAD EVENTUAL: Inyectar Context al HomeViewModel
@@ -191,7 +192,7 @@ fun HomeScreen(
                 items = listOf(
                     ShortcutSpec("Stellar Emotions", R.drawable.stellar_emotions),
                     ShortcutSpec("Star Archive", R.drawable.star_archive),
-                    ShortcutSpec("Captain's Log", R.drawable.captain_log),
+                    ShortcutSpec("Activity Stats", R.drawable.captain_log),
                     ShortcutSpec("Crew members", R.drawable.crew_members),
                     ShortcutSpec("Command profile", R.drawable.command_profile)
                 ),
@@ -199,6 +200,7 @@ fun HomeScreen(
                     when (shortcut.label) {
                         "Stellar Emotions" -> onNavigateToStellarEmotions()
                         "Star Archive" -> onNavigateToLibrary()
+                        "Activity Stats" -> onNavigateToCaptainsLog()
                         "Command profile" -> onNavigateToProfile()
                     }
                 }

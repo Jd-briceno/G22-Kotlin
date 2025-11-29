@@ -14,6 +14,7 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
  * 
  * Version 2: Added Library cache entities (LibrarySectionCacheEntity, SearchHistoryEntity)
  * Version 3: Added EmotionLogEntity for offline emotion logging
+ * Version 3: Added SessionActivityLogEntity for session activity journal feature
  */
 @Database(
     entities = [
@@ -28,6 +29,8 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
         SearchHistoryEntity::class,
         // Emotion logs (v3)
         EmotionLogEntity::class
+        // Session activity logs (v3)
+        SessionActivityLogEntity::class
     ],
     version = 3,
     exportSchema = false
@@ -43,6 +46,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun outboxDao(): OutboxDao
     abstract fun libraryCacheDao(): LibraryCacheDao
     abstract fun emotionLogDao(): EmotionLogDao
+    abstract fun sessionActivityLogDao(): SessionActivityLogDao
 
     companion object {
         @Volatile
