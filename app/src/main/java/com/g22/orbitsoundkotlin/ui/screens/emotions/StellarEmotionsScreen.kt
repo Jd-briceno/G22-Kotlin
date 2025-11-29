@@ -293,6 +293,12 @@ fun StellarEmotionsScreen(
                 is StellarEmotionsViewModel.Event.ShowError -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
                 }
+                is StellarEmotionsViewModel.Event.ShowSuccess -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+                is StellarEmotionsViewModel.Event.ShowOfflineSuccess -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                }
                 is StellarEmotionsViewModel.Event.NavigateNext -> {
                     // Navigate when the ViewModel tells us to
                     onNavigateToConstellations()
