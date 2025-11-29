@@ -47,6 +47,14 @@ class MusicMemoryCache {
         override fun sizeOf(key: String, value: CachedSearchResult): Int = 1
     }
     
+    /**
+     * LRU cache for Ares AI-generated playlists with 1-hour TTL.
+     * Capacity: 10 queries
+     */
+    private val aresCache = object : LruCache<String, CachedAresResult>(10) {
+        override fun sizeOf(key: String, value: CachedAresResult): Int = 1
+    }
+    
     // Track Cache Operations
     
     /** Generates unique cache key for a track (title + artist). */
@@ -154,6 +162,65 @@ class MusicMemoryCache {
         return getSearchResults(query) != null
     }
     
+    // Ares Cache Operations
+    
+    /**
+     * Caches Ares AI-generated playlist results.
+     * Query is normalized (lowercased and trimmed).
+     * TTL: 1 hour (shorter than Room cache to prioritize freshness).
+     * 
+     * @param userInput User's emotional input
+     * @param queries Gemini-generated queries
+     * @param tracks Result tracks
+     */
+    fun putAresResults(userInput: String, queries: List<String>, tracks: List<Track>) {
+        val normalizedInput = userInput.lowercase().trim()
+        aresCache.put(
+            normalizedInput,
+            CachedAresResult(
+                userInput = normalizedInput,
+                queries = queries,
+                tracks = tracks,
+                timestamp = System.currentTimeMillis()
+            )
+        )
+        putTracks(tracks)
+    }
+    
+    /**
+     * Returns cached Ares results if available and not expired.
+     * Entries older than 1 hour are automatically removed.
+     * 
+     * @param userInput User's emotional input
+     * @return Pair of (queries, tracks), or null if not found or expired
+     */
+    fun getAresResults(userInput: String): Pair<List<String>, List<Track>>? {
+        val normalizedInput = userInput.lowercase().trim()
+        val cached = aresCache.get(normalizedInput) ?: return null
+        
+        val age = System.currentTimeMillis() - cached.timestamp
+        val ttl = 60 * 60 * 1000L // 1 hour
+        
+        return if (age < ttl) {
+            Pair(cached.queries, cached.tracks)
+        } else {
+            aresCache.remove(normalizedInput)
+            null
+        }
+    }
+    
+    /** Returns true if Ares query is cached and not expired. */
+    fun hasAresResults(userInput: String): Boolean {
+        return getAresResults(userInput) != null
+    }
+    
+    /** Returns age in milliseconds of cached Ares result, or null if not cached. */
+    fun getAresResultAge(userInput: String): Long? {
+        val normalizedInput = userInput.lowercase().trim()
+        val cached = aresCache.get(normalizedInput) ?: return null
+        return System.currentTimeMillis() - cached.timestamp
+    }
+    
     // Cache Management
     
     /** Clears all caches. Use on logout or memory warnings. */
@@ -161,11 +228,17 @@ class MusicMemoryCache {
         trackCache.evictAll()
         sectionCache.evictAll()
         searchCache.evictAll()
+        aresCache.evictAll()
     }
     
     /** Clears search cache only. */
     fun clearSearchCache() {
         searchCache.evictAll()
+    }
+    
+    /** Clears Ares cache only. */
+    fun clearAresCache() {
+        aresCache.evictAll()
     }
     
     /**
@@ -193,7 +266,9 @@ class MusicMemoryCache {
             sectionCount = sectionCache.size(),
             sectionMaxCount = sectionCache.maxSize(),
             searchCount = searchCache.size(),
-            searchMaxCount = searchCache.maxSize()
+            searchMaxCount = searchCache.maxSize(),
+            aresCount = aresCache.size(),
+            aresMaxCount = aresCache.maxSize()
         )
     }
     
@@ -212,6 +287,14 @@ class MusicMemoryCache {
         val timestamp: Long
     )
     
+    /** Ares AI-generated result with timestamp for TTL validation. */
+    private data class CachedAresResult(
+        val userInput: String,
+        val queries: List<String>,
+        val tracks: List<Track>,
+        val timestamp: Long
+    )
+    
     /** Cache statistics container for monitoring and debugging. */
     data class CacheStats(
         val trackCount: Int,
@@ -221,7 +304,9 @@ class MusicMemoryCache {
         val sectionCount: Int,
         val sectionMaxCount: Int,
         val searchCount: Int,
-        val searchMaxCount: Int
+        val searchMaxCount: Int,
+        val aresCount: Int,
+        val aresMaxCount: Int
     ) {
         /** Cache hit rate as percentage (0-100) */
         val trackHitRate: Float

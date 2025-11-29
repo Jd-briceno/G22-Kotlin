@@ -14,6 +14,7 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
  * 
  * Version 2: Added Library cache entities (LibrarySectionCacheEntity, SearchHistoryEntity)
  * Version 3: Added SessionActivityLogEntity for session activity journal feature
+ * Version 4: Added AresCacheEntity for AI emotional recommendations cache
  */
 @Database(
     entities = [
@@ -27,9 +28,11 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
         LibrarySectionCacheEntity::class,
         SearchHistoryEntity::class,
         // Session activity logs (v3)
-        SessionActivityLogEntity::class
+        SessionActivityLogEntity::class,
+        // Ares AI cache (v4)
+        AresCacheEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(
@@ -46,6 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun outboxDao(): OutboxDao
     abstract fun libraryCacheDao(): LibraryCacheDao
     abstract fun sessionActivityLogDao(): SessionActivityLogDao
+    abstract fun aresCacheDao(): AresCacheDao
 
     companion object {
         @Volatile

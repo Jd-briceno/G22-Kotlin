@@ -1,14 +1,20 @@
 package com.g22.orbitsoundkotlin.ui.viewmodels
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.g22.orbitsoundkotlin.analytics.MusicAnalytics
+import com.g22.orbitsoundkotlin.data.local.AppDatabase
+import com.g22.orbitsoundkotlin.data.repositories.AresCacheRepository
+import com.g22.orbitsoundkotlin.data.repositories.AresCacheResult
 import com.g22.orbitsoundkotlin.models.Track
 import com.g22.orbitsoundkotlin.services.GeminiService
 import com.g22.orbitsoundkotlin.services.SpotifyService
+import com.g22.orbitsoundkotlin.utils.NetworkMonitor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,11 +23,14 @@ import kotlinx.coroutines.launch
 
 /**
  * ViewModel para la pantalla "Ares: Modo Emocional"
- * Maneja la generación de playlists basadas en IA (Gemini)
+ * Maneja la generación de playlists basadas en IA (Gemini) con cache y soporte offline
  */
 class AresViewModel(
     private val geminiService: GeminiService = GeminiService.getInstance(),
-    private val spotifyService: SpotifyService = SpotifyService.getInstance()
+    private val spotifyService: SpotifyService = SpotifyService.getInstance(),
+    private val aresCacheRepository: AresCacheRepository? = null,
+    private val networkMonitor: NetworkMonitor? = null,
+    private val userId: String = ""
 ) : ViewModel() {
 
     companion object {
@@ -45,7 +54,8 @@ class AresViewModel(
     }
 
     /**
-     * Genera playlist basada en el input emocional del usuario
+     * Genera playlist basada en el input emocional del usuario.
+     * Usa cache con SWR pattern y soporte offline híbrido.
      */
     fun generatePlaylist() {
         val input = _uiState.value.userInput.trim()
@@ -65,66 +75,50 @@ class AresViewModel(
                         isLoading = true,
                         loadingMessage = "Analyzing emotions...",
                         error = null,
-                        recommendations = emptyList()
+                        recommendations = emptyList(),
+                        isOfflineMode = false,
+                        fromCache = false
                     )
                 }
 
-                // Paso 1: Construir prompt y obtener queries de Gemini
-                Log.d(TAG, "Requesting queries from Gemini for input: $input")
-                val prompt = buildPromptForEmotionalMusic(input)
-                val geminiResponse = geminiService.generateContent(prompt)
+                // Verificar conectividad
+                val isOnline = networkMonitor?.isConnected() ?: true
+                Log.d(TAG, "Network status: ${if (isOnline) "Online" else "Offline"}")
 
-                // Parsear respuesta de Gemini
-                var queries: List<String>? = null
-                if (geminiResponse != null) {
-                    queries = parseQueriesFromResponse(geminiResponse)
-                    Log.d(TAG, "Received ${queries?.size ?: 0} queries from Gemini")
-                }
-
-                // Si Gemini no devolvió queries válidas, usar búsqueda directa con el input del usuario
-                if (queries.isNullOrEmpty()) {
-                    Log.w(TAG, "Gemini failed or no queries, using direct user input as query")
-                    _uiState.update { it.copy(loadingMessage = "Searching for music...") }
-                    queries = listOf(input) // Usar el input del usuario directamente como query
+                // Si hay repository, usar cache con SWR pattern
+                if (aresCacheRepository != null && userId.isNotEmpty()) {
+                    val result = aresCacheRepository.getRecommendations(
+                        userInput = input,
+                        userId = userId,
+                        isOnline = isOnline,
+                        fetchRemote = {
+                            // Lambda para fetch remoto (Gemini + Spotify)
+                            fetchFromApis(input)
+                        }
+                    )
+                    
+                    handleCacheResult(result, input)
                 } else {
-                    _uiState.update { it.copy(loadingMessage = "Searching for perfect songs...") }
-                }
-
-                // Paso 2: Buscar tracks en Spotify en paralelo
-                val trackLists = queries.map { query ->
-                    async(Dispatchers.IO) {
-                        Log.d(TAG, "Searching Spotify with query: $query")
-                        spotifyService.searchTracks(query)
+                    // Fallback sin cache: llamar APIs directamente
+                    Log.w(TAG, "No cache repository, fetching directly")
+                    val (queries, tracks) = fetchFromApis(input)
+                    
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            loadingMessage = null,
+                            recommendations = tracks,
+                            error = if (tracks.isEmpty()) "No songs found. Try another description." else null
+                        )
                     }
-                }.map { it.await() }
-
-                // Paso 3: Combinar y deduplicar resultados
-                val allTracks = trackLists.flatten()
-                Log.d(TAG, "Found ${allTracks.size} total tracks before deduplication")
-
-                val uniqueTracks = allTracks
-                    .distinctBy { it.title + it.artist } // Deduplicar por título + artista
-                    .take(MAX_TRACKS)
-
-                Log.d(TAG, "Final playlist: ${uniqueTracks.size} unique tracks")
-
-                // Actualizar estado con resultados
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        loadingMessage = null,
-                        recommendations = uniqueTracks,
-                        error = if (uniqueTracks.isEmpty()) "No songs found. Try another description." else null
+                    
+                    MusicAnalytics.trackAresGeneration(
+                        userInput = input,
+                        queriesGenerated = queries.size,
+                        tracksFound = tracks.size,
+                        success = tracks.isNotEmpty()
                     )
                 }
-
-                // Analytics
-                MusicAnalytics.trackAresGeneration(
-                    userInput = input,
-                    queriesGenerated = queries.size,
-                    tracksFound = uniqueTracks.size,
-                    success = uniqueTracks.isNotEmpty()
-                )
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error generating playlist", e)
@@ -136,7 +130,6 @@ class AresViewModel(
                     )
                 }
 
-                // Analytics de error
                 MusicAnalytics.trackAresGeneration(
                     userInput = input,
                     queriesGenerated = 0,
@@ -145,6 +138,128 @@ class AresViewModel(
                 )
             }
         }
+    }
+    
+    /**
+     * Maneja el resultado del cache (online/offline/error).
+     */
+    private fun handleCacheResult(result: AresCacheResult, originalInput: String) {
+        when (result) {
+            is AresCacheResult.Success -> {
+                val cacheAgeHours = (result.cacheAge / (60 * 60 * 1000)).toInt()
+                
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        loadingMessage = null,
+                        recommendations = result.tracks,
+                        fromCache = result.fromCache,
+                        isOfflineMode = false,
+                        cacheAgeHours = cacheAgeHours,
+                        error = if (result.tracks.isEmpty()) "No songs found. Try another description." else null
+                    )
+                }
+                
+                // Analytics
+                if (result.fromCache) {
+                    MusicAnalytics.trackAresCacheHit(
+                        cacheAgeHours = cacheAgeHours,
+                        fromMemory = result.fromMemory,
+                        fromRoom = !result.fromMemory
+                    )
+                }
+                
+                MusicAnalytics.trackAresGeneration(
+                    userInput = originalInput,
+                    queriesGenerated = result.queries.size,
+                    tracksFound = result.tracks.size,
+                    success = result.tracks.isNotEmpty()
+                )
+            }
+            
+            is AresCacheResult.OfflineSuccess -> {
+                val cacheAgeHours = (result.cacheAge / (60 * 60 * 1000)).toInt()
+                
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        loadingMessage = null,
+                        recommendations = result.tracks,
+                        isOfflineMode = true,
+                        fromCache = true,
+                        cacheAgeHours = cacheAgeHours
+                    )
+                }
+                
+                // Analytics offline
+                MusicAnalytics.trackAresOfflineMode(
+                    cacheAgeHours = cacheAgeHours,
+                    hadResults = result.tracks.isNotEmpty()
+                )
+            }
+            
+            is AresCacheResult.OfflineError -> {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        loadingMessage = null,
+                        error = result.message
+                    )
+                }
+                
+                // Analytics offline sin resultados
+                MusicAnalytics.trackAresOfflineMode(
+                    cacheAgeHours = 0,
+                    hadResults = false
+                )
+            }
+        }
+    }
+    
+    /**
+     * Llama a las APIs (Gemini + Spotify) y retorna queries y tracks.
+     */
+    private suspend fun fetchFromApis(input: String): Pair<List<String>, List<Track>> = coroutineScope {
+        // Paso 1: Construir prompt y obtener queries de Gemini
+        Log.d(TAG, "Requesting queries from Gemini for input: $input")
+        val prompt = buildPromptForEmotionalMusic(input)
+        val geminiResponse = geminiService.generateContent(prompt)
+
+        // Parsear respuesta de Gemini
+        var queries: List<String>? = null
+        if (geminiResponse != null) {
+            queries = parseQueriesFromResponse(geminiResponse)
+            Log.d(TAG, "Received ${queries?.size ?: 0} queries from Gemini")
+        }
+
+        // Si Gemini no devolvió queries válidas, usar búsqueda directa con el input del usuario
+        if (queries.isNullOrEmpty()) {
+            Log.w(TAG, "Gemini failed or no queries, using direct user input as query")
+            _uiState.update { it.copy(loadingMessage = "Searching for music...") }
+            queries = listOf(input) // Usar el input del usuario directamente como query
+        } else {
+            _uiState.update { it.copy(loadingMessage = "Searching for perfect songs...") }
+        }
+
+        // Paso 2: Buscar tracks en Spotify en paralelo
+        val trackLists = queries.map { query ->
+            async(Dispatchers.IO) {
+                Log.d(TAG, "Searching Spotify with query: $query")
+                spotifyService.searchTracks(query)
+            }
+        }.map { it.await() }
+
+        // Paso 3: Combinar y deduplicar resultados
+        val allTracks = trackLists.flatten()
+        Log.d(TAG, "Found ${allTracks.size} total tracks before deduplication")
+
+        val uniqueTracks = allTracks
+            .distinctBy { it.title + it.artist } // Deduplicar por título + artista
+            .take(MAX_TRACKS)
+
+        Log.d(TAG, "Final playlist: ${uniqueTracks.size} unique tracks")
+        
+        Pair(queries, uniqueTracks)
     }
 
     /**
@@ -213,7 +328,36 @@ rainy day mood music"""
         val isLoading: Boolean = false,
         val loadingMessage: String? = null,
         val recommendations: List<Track> = emptyList(),
-        val error: String? = null
+        val error: String? = null,
+        val isOfflineMode: Boolean = false, // Indica si se está usando cache offline
+        val fromCache: Boolean = false, // Indica si los resultados vienen del cache
+        val cacheAgeHours: Int = 0 // Edad del cache en horas
     )
+}
+
+/**
+ * Factory para crear AresViewModel con dependencias.
+ */
+class AresViewModelFactory(
+    private val context: Context,
+    private val userId: String
+) : androidx.lifecycle.ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(AresViewModel::class.java)) {
+            val database = AppDatabase.getInstance(context)
+            val aresCacheRepository = AresCacheRepository(database)
+            val networkMonitor = NetworkMonitor(context)
+            
+            @Suppress("UNCHECKED_CAST")
+            return AresViewModel(
+                geminiService = GeminiService.getInstance(),
+                spotifyService = SpotifyService.getInstance(),
+                aresCacheRepository = aresCacheRepository,
+                networkMonitor = networkMonitor,
+                userId = userId
+            ) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
 }
 

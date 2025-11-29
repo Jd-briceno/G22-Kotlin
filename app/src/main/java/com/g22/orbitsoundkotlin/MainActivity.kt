@@ -423,7 +423,14 @@ private fun OrbitSoundApp() {
                 )
             }
             is AppDestination.Ares -> {
-                val aresViewModel: com.g22.orbitsoundkotlin.ui.viewmodels.AresViewModel = viewModel()
+                val context = LocalContext.current
+                val factory = remember {
+                    com.g22.orbitsoundkotlin.ui.viewmodels.AresViewModelFactory(
+                        context = context,
+                        userId = current.user.id
+                    )
+                }
+                val aresViewModel: com.g22.orbitsoundkotlin.ui.viewmodels.AresViewModel = viewModel(factory = factory)
                 com.g22.orbitsoundkotlin.ui.screens.ares.AresScreen(
                     viewModel = aresViewModel,
                     onBack = {

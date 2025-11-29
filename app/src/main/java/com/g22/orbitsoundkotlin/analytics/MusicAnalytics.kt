@@ -221,5 +221,42 @@ object MusicAnalytics {
         }
         analytics.logEvent("ares_playlist_generated", params)
     }
+    
+    /**
+     * Tracks when Ares serves a result from cache (SWR pattern).
+     * 
+     * @param cacheAgeHours Age of the cache in hours
+     * @param fromMemory Whether the cache came from memory (LRU)
+     * @param fromRoom Whether the cache came from Room database
+     */
+    fun trackAresCacheHit(
+        cacheAgeHours: Int,
+        fromMemory: Boolean,
+        fromRoom: Boolean
+    ) {
+        val params = Bundle().apply {
+            putInt("cache_age_hours", cacheAgeHours)
+            putBoolean("from_memory", fromMemory)
+            putBoolean("from_room", fromRoom)
+        }
+        analytics.logEvent("ares_cache_hit", params)
+    }
+    
+    /**
+     * Tracks when Ares is used in offline mode (eventual connectivity).
+     * 
+     * @param cacheAgeHours Age of the cache in hours (0 if no cache)
+     * @param hadResults Whether the offline mode was able to show cached results
+     */
+    fun trackAresOfflineMode(
+        cacheAgeHours: Int,
+        hadResults: Boolean
+    ) {
+        val params = Bundle().apply {
+            putInt("cache_age_hours", cacheAgeHours)
+            putBoolean("had_cached_results", hadResults)
+        }
+        analytics.logEvent("ares_offline_mode", params)
+    }
 }
 
