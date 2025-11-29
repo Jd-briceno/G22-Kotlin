@@ -1,6 +1,7 @@
 package com.g22.orbitsoundkotlin.services
 
 import android.util.Log
+import android.util.LruCache
 import com.g22.orbitsoundkotlin.BuildConfig
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
@@ -12,7 +13,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
- * Service Adapter para la API de Straico
+ * Service Adapter para la API de Straico con caché LRU
  */
 class EmotionSuggestionService private constructor() {
 
@@ -29,6 +30,7 @@ class EmotionSuggestionService private constructor() {
         private const val STRAICO_API_URL = "https://api.straico.com/v1/prompt/completion"
         private const val DEFAULT_MODEL = "openai/gpt-5-mini"
         private const val REQUEST_TIMEOUT_SECONDS = 30L
+        private const val CACHE_SIZE = 20 // Máximo 20 sugerencias en caché
     }
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -36,6 +38,9 @@ class EmotionSuggestionService private constructor() {
     private val client = OkHttpClient.Builder()
         .readTimeout(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()
+
+    // LruCache para almacenar sugerencias: Key = emoción, Value = sugerencia
+    private val suggestionCache = LruCache<String, String>(CACHE_SIZE)
 
     // Data classes para el contrato de la API de Straico
     private data class StraicoRequest(
@@ -69,6 +74,7 @@ class EmotionSuggestionService private constructor() {
 
     /**
      * Obtiene una sugerencia de emoción basada en la emoción más seleccionada por el usuario
+     * Primero verifica el caché, si no hay conexión o falla la API, retorna valor cacheado
      *
      * @param mostSelectedEmotion La emoción que el usuario ha seleccionado más frecuentemente
      * @return Una sugerencia de emoción (Renewal, Power, Ambition, Serenity, Protection, Guidance) o null si falla
@@ -79,8 +85,42 @@ class EmotionSuggestionService private constructor() {
             return null
         }
 
+        // Normalizar la clave para el caché
+        val cacheKey = mostSelectedEmotion.trim().lowercase()
+
+        // Verificar si hay una sugerencia en caché
+        val cachedSuggestion = suggestionCache.get(cacheKey)
+        if (cachedSuggestion != null) {
+            Log.d(TAG, "Returning cached suggestion for '$mostSelectedEmotion': $cachedSuggestion")
+            return cachedSuggestion
+        }
+
+        // Si no hay en caché, hacer la llamada a la API
         val prompt = buildPrompt(mostSelectedEmotion)
-        return executeApiCall(prompt)
+        val suggestion = executeApiCall(prompt)
+
+        // Si la llamada fue exitosa, guardar en caché
+        if (suggestion != null) {
+            suggestionCache.put(cacheKey, suggestion)
+            Log.d(TAG, "Cached new suggestion for '$mostSelectedEmotion': $suggestion")
+        }
+
+        return suggestion
+    }
+
+    /**
+     * Limpia el caché de sugerencias
+     */
+    fun clearCache() {
+        suggestionCache.evictAll()
+        Log.d(TAG, "Suggestion cache cleared")
+    }
+
+    /**
+     * Obtiene el tamaño actual del caché
+     */
+    fun getCacheSize(): Int {
+        return suggestionCache.size()
     }
 
     /**

@@ -8,7 +8,6 @@ import com.g22.orbitsoundkotlin.data.local.entities.OutboxOperationType
 import com.g22.orbitsoundkotlin.data.local.entities.SyncStatus
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.tasks.await
 
@@ -24,7 +23,6 @@ class SyncWorker(
     private val db = AppDatabase.getInstance(context)
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
-    private val gson = Gson()
 
     companion object {
         private const val USERS_COLLECTION = "users"
@@ -62,14 +60,19 @@ class SyncWorker(
                                 syncQuickAction(batch, operation, currentUser.uid)
                             }
                         }
+                        OutboxOperationType.LOG_EMOTIONS -> {
+                            if (currentUser != null) {
+                                syncEmotionLog(batch, operation, currentUser.uid)
+                            }
+                        }
                         OutboxOperationType.SEND_TELEMETRY -> {
                             // Ya manejado por TelemetrySyncWorker
                         }
                     }
                     syncedIds.add(operation.id)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // Incrementar intentos
-                    db.outboxDao().incrementSyncAttempts(operation.id, e.message)
+                    db.outboxDao().incrementSyncAttempts(operation.id, "Sync failed")
                 }
             }
 
@@ -77,7 +80,7 @@ class SyncWorker(
             db.outboxDao().markAsSynced(syncedIds)
 
             Result.success()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             Result.retry()
         }
     }
@@ -87,13 +90,13 @@ class SyncWorker(
         operation: com.g22.orbitsoundkotlin.data.local.entities.OutboxEntity,
         uid: String
     ) {
-        val data = operation.payload.asMap()
+        val data = operation.payload.toFirestoreMap()
         val docRef = firestore.collection(USERS_COLLECTION).document(uid)
         batch.set(docRef, data, com.google.firebase.firestore.SetOptions.merge())
 
         // Actualizar estado en Room
         val users = db.userDao().getPendingSyncUsers()
-        users.filter { it.email == data["email"]?.asString }.forEach { user ->
+        users.filter { it.email == data["email"] as? String }.forEach { user ->
             db.userDao().updateUser(
                 user.copy(
                     syncStatus = SyncStatus.SYNCED,
@@ -103,30 +106,44 @@ class SyncWorker(
         }
     }
 
-    private suspend fun syncInterests(
+    private fun syncInterests(
         batch: com.google.firebase.firestore.WriteBatch,
         operation: com.g22.orbitsoundkotlin.data.local.entities.OutboxEntity,
         uid: String
     ) {
-        val data = operation.payload.asMap()
+        val data = operation.payload.toFirestoreMap()
         val docRef = firestore.collection(USERS_COLLECTION).document(uid)
         batch.set(docRef, data, com.google.firebase.firestore.SetOptions.merge())
     }
 
-    private suspend fun syncQuickAction(
+    private fun syncQuickAction(
         batch: com.google.firebase.firestore.WriteBatch,
         operation: com.g22.orbitsoundkotlin.data.local.entities.OutboxEntity,
         uid: String
     ) {
-        val data = operation.payload.asMap()
+        val data = operation.payload.toFirestoreMap()
         val timestamp = com.google.firebase.Timestamp.now()
         val docRef = firestore.collection("user_actions").document(uid)
         batch.set(docRef, data + ("timestamp" to timestamp), com.google.firebase.firestore.SetOptions.merge())
     }
 
-    private fun JsonObject.asMap(): Map<String, Any> {
+    private fun syncEmotionLog(
+        batch: com.google.firebase.firestore.WriteBatch,
+        operation: com.g22.orbitsoundkotlin.data.local.entities.OutboxEntity,
+        uid: String
+    ) {
+        val data = operation.payload.toFirestoreMap()
+        val timestamp = com.google.firebase.Timestamp.now()
+        val docRef = firestore.collection("emotion_logs").document()
+        batch.set(docRef, data + mapOf(
+            "userId" to uid,
+            "timestamp" to timestamp
+        ))
+    }
+
+    private fun JsonObject.toFirestoreMap(): Map<String, Any> {
         return mutableMapOf<String, Any>().apply {
-            this@asMap.entrySet().forEach { entry ->
+            this@toFirestoreMap.entrySet().forEach { entry ->
                 val value = when {
                     entry.value.isJsonPrimitive -> {
                         val prim = entry.value.asJsonPrimitive
