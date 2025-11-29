@@ -258,5 +258,37 @@ object MusicAnalytics {
         }
         analytics.logEvent("ares_offline_mode", params)
     }
+    
+    // ═══════════════════════════════════════════════════════════
+    // ACHIEVEMENTS - User Engagement and Gamification
+    // ═══════════════════════════════════════════════════════════
+    
+    /**
+     * Track when an achievement is unlocked
+     */
+    fun trackAchievementUnlocked(achievementId: String, achievementName: String) {
+        val params = Bundle().apply {
+            putString("achievement_id", achievementId)
+            putString("achievement_name", achievementName)
+        }
+        analytics.logEvent("achievement_unlocked", params)
+    }
+    
+    /**
+     * Track when user views the achievements screen
+     */
+    fun trackAchievementsScreenView() {
+        analytics.logEvent("achievements_screen_view", null)
+    }
+    
+    /**
+     * Track when user taps on an achievement notification
+     */
+    fun trackAchievementNotificationTapped(achievementId: String) {
+        val params = Bundle().apply {
+            putString("achievement_id", achievementId)
+        }
+        analytics.logEvent("achievement_notification_tapped", params)
+    }
 }
 

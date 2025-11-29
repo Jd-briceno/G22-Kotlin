@@ -30,7 +30,8 @@ class AresViewModel(
     private val spotifyService: SpotifyService = SpotifyService.getInstance(),
     private val aresCacheRepository: AresCacheRepository? = null,
     private val networkMonitor: NetworkMonitor? = null,
-    private val userId: String = ""
+    private val userId: String = "",
+    private val achievementService: com.g22.orbitsoundkotlin.services.AchievementService? = null
 ) : ViewModel() {
 
     companion object {
@@ -175,6 +176,18 @@ class AresViewModel(
                     tracksFound = result.tracks.size,
                     success = result.tracks.isNotEmpty()
                 )
+                
+                // Check AI Maestro achievement (only on successful generation with tracks)
+                if (result.tracks.isNotEmpty() && userId.isNotEmpty()) {
+                    Log.d(TAG, "Checking AI Maestro achievement for user: $userId")
+                    if (achievementService != null) {
+                        achievementService.checkAIMaestro(userId)
+                    } else {
+                        Log.w(TAG, "AchievementService is null, cannot unlock AI Maestro")
+                    }
+                } else {
+                    Log.d(TAG, "Skipping AI Maestro: tracks=${result.tracks.size}, userId=$userId")
+                }
             }
             
             is AresCacheResult.OfflineSuccess -> {
@@ -347,6 +360,8 @@ class AresViewModelFactory(
             val database = AppDatabase.getInstance(context)
             val aresCacheRepository = AresCacheRepository(database)
             val networkMonitor = NetworkMonitor(context)
+            val achievementRepo = com.g22.orbitsoundkotlin.data.repositories.AchievementRepository(database)
+            val achievementService = com.g22.orbitsoundkotlin.services.AchievementService.getInstance(context, achievementRepo)
             
             @Suppress("UNCHECKED_CAST")
             return AresViewModel(
@@ -354,7 +369,8 @@ class AresViewModelFactory(
                 spotifyService = SpotifyService.getInstance(),
                 aresCacheRepository = aresCacheRepository,
                 networkMonitor = networkMonitor,
-                userId = userId
+                userId = userId,
+                achievementService = achievementService
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

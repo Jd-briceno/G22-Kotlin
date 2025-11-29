@@ -169,6 +169,12 @@ class StellarEmotionsViewModel(
                 } else {
                     _event.emit(Event.ShowOfflineSuccess("Emoción guardada. Se sincronizará cuando vuelva la conexión"))
                 }
+                
+                // Check Emotion Explorer achievement
+                val database = com.g22.orbitsoundkotlin.data.local.AppDatabase.getInstance(context)
+                val achievementRepo = com.g22.orbitsoundkotlin.data.repositories.AchievementRepository(database)
+                val achievementService = com.g22.orbitsoundkotlin.services.AchievementService.getInstance(context, achievementRepo)
+                achievementService.checkEmotionExplorer(userId)
 
                 // Notify navigation - the emotion is saved (locally if offline, will sync later)
                 _event.emit(Event.NavigateNext)
@@ -226,6 +232,12 @@ class StellarEmotionsViewModel(
                     } else {
                         _event.emit(Event.ShowOfflineSuccess("Emotions saved. They will be synchronized when back online"))
                     }
+                    
+                    // Check Emotion Explorer achievement
+                    val database = com.g22.orbitsoundkotlin.data.local.AppDatabase.getInstance(context)
+                    val achievementRepo = com.g22.orbitsoundkotlin.data.repositories.AchievementRepository(database)
+                    val achievementService = com.g22.orbitsoundkotlin.services.AchievementService.getInstance(context, achievementRepo)
+                    achievementService.checkEmotionExplorer(userId)
 
                     // Navigate immediately - data is saved locally and will sync in background
                     _event.emit(Event.NavigateNext)

@@ -15,7 +15,7 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
  * Version 2: Added Library cache entities (LibrarySectionCacheEntity, SearchHistoryEntity)
  * Version 3: Added SessionActivityLogEntity for session activity journal feature
  * Version 4: Added AresCacheEntity for AI emotional recommendations cache
- * Version 5: Added EmotionLogEntity for offline emotion logging
+ * Version 5: Added AchievementEntity for user achievements system
  */
 @Database(
     entities = [
@@ -33,9 +33,11 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
         // Session activity logs (v3)
         SessionActivityLogEntity::class,
         // Ares AI cache (v4)
-        AresCacheEntity::class
+        AresCacheEntity::class,
+        // Achievements (v5)
+        AchievementEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(StringListConverter::class, JsonConverter::class, EmotionListConverter::class)
@@ -51,6 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun emotionLogDao(): EmotionLogDao
     abstract fun sessionActivityLogDao(): SessionActivityLogDao
     abstract fun aresCacheDao(): AresCacheDao
+    abstract fun achievementDao(): AchievementDao
 
     companion object {
         @Volatile

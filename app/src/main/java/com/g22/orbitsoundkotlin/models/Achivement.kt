@@ -5,5 +5,6 @@ data class Achievement(
     val name: String,
     val imageUrl: String,
     val description: String,
-    val isUnlocked: Boolean = false
+    val isUnlocked: Boolean = false,
+    val unlockedAt: Long? = null
 )
