@@ -5,7 +5,7 @@ import com.g22.orbitsoundkotlin.data.local.entities.EmotionLogEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
- * DAO para manejar emotion logs locales con eventual connectivity.
+ * DAO para manejar emotion logs locales con eventual connectivity
  */
 @Dao
 interface EmotionLogDao {
