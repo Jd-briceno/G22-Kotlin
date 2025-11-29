@@ -3,6 +3,7 @@ package com.g22.orbitsoundkotlin.ui.screens.profile
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -23,13 +24,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.g22.orbitsoundkotlin.models.Achievement
 import com.g22.orbitsoundkotlin.models.Track
 import com.g22.orbitsoundkotlin.ui.screens.home.OrbitNavbar
 import com.g22.orbitsoundkotlin.ui.viewmodels.ProfileViewModel
 
 @Composable
 fun ProfileScreen(
+    user: com.g22.orbitsoundkotlin.services.AuthUser,
     onNavigateToHome: () -> Unit = {},
+    onNavigateToAchievements: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -46,8 +50,8 @@ fun ProfileScreen(
 
         // Navbar
         OrbitNavbar(
-            username = "Jay Walker",
-            title = "Ninja",
+            username = uiState.username,
+            title = uiState.title,
             subtitle = "Profile",
             profilePainter = null,
             onNavigateToHome = onNavigateToHome
@@ -87,10 +91,18 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    AchievementCircle(image = "assets/images/medal.jpg")
-                    AchievementCircle(image = "assets/images/medal2.jpg")
-                    AchievementCircle(image = "assets/images/medal3.jpg")
-                    PlusIcon()
+                    // Show first 3 unlocked achievements, or placeholders if less
+                    val unlockedAchievements = uiState.achievements.take(3)
+                    repeat(3) { index ->
+                        if (index < unlockedAchievements.size) {
+                            AchievementCircle(
+                                achievement = unlockedAchievements[index]
+                            )
+                        } else {
+                            EmptyAchievementCircle()
+                        }
+                    }
+                    PlusIcon(onClick = onNavigateToAchievements)
                 }
 
                 Spacer(modifier = Modifier.height(28.dp))
@@ -306,17 +318,34 @@ fun SectionTitle(title: String) {
 }
 
 @Composable
-fun AchievementCircle(image: String) {
+fun AchievementCircle(achievement: Achievement) {
     Box(
         modifier = Modifier
             .size(52.dp)
             .background(Color.Transparent, CircleShape)
-            .border(2.dp, Color.White, CircleShape),
+            .border(2.dp, Color(0xFFFFD700), CircleShape), // Gold border for unlocked
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "🏆",
-            fontSize = 20.sp
+            text = achievement.imageUrl, // Emoji icon
+            fontSize = 24.sp
+        )
+    }
+}
+
+@Composable
+fun EmptyAchievementCircle() {
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .background(Color.Transparent, CircleShape)
+            .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "🔒",
+            fontSize = 20.sp,
+            color = Color.White.copy(alpha = 0.3f)
         )
     }
 }
@@ -344,15 +373,16 @@ fun FriendCircle(image: String, status: FriendStatus) {
 }
 
 @Composable
-fun PlusIcon() {
+fun PlusIcon(onClick: () -> Unit = {}) {
     Box(
         modifier = Modifier
-            .size(60.dp),
+            .size(60.dp)
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Default.Add,
-            contentDescription = "Add",
+            contentDescription = "View all achievements",
             tint = Color.White.copy(alpha = 0.7f),
             modifier = Modifier.size(60.dp)
         )

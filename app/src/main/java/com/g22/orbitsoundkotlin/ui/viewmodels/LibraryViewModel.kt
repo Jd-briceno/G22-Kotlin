@@ -637,5 +637,46 @@ class LibraryViewModel(
         @Deprecated("Use section4.tracks instead", ReplaceWith("section4?.tracks ?: emptyList()"))
         val orbitCrewSongs: List<Track> get() = section4?.tracks ?: emptyList()
     }
+    
+    /**
+     * Like a track and check First Like achievement.
+     * Saves to Firebase and triggers achievement unlock.
+     */
+    fun likeTrack(track: Track, context: android.content.Context) {
+        viewModelScope.launch {
+            try {
+                // Save liked track to Firebase
+                val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                if (userId.isNotEmpty()) {
+                    val likedTrackData = mapOf(
+                        "title" to track.title,
+                        "artist" to track.artist,
+                        "albumArt" to track.albumArt,
+                        "duration" to track.duration,
+                        "likedAt" to com.google.firebase.Timestamp.now()
+                    )
+                    
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("likedTracks")
+                        .add(likedTrackData)
+                        .addOnSuccessListener {
+                            Log.d(TAG, "Track liked successfully")
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e(TAG, "Error liking track", e)
+                        }
+                    
+                    // Check First Like achievement
+                    val database = com.g22.orbitsoundkotlin.data.local.AppDatabase.getInstance(context)
+                    val achievementRepo = com.g22.orbitsoundkotlin.data.repositories.AchievementRepository(database)
+                    val achievementService = com.g22.orbitsoundkotlin.services.AchievementService.getInstance(context, achievementRepo)
+                    achievementService.checkFirstLike(userId)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in likeTrack", e)
+            }
+        }
+    }
 }
 
