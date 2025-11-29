@@ -5,12 +5,14 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.g22.orbitsoundkotlin.data.DefaultEmotionLogFactory
+import com.g22.orbitsoundkotlin.data.EmotionLogFactory
 import com.g22.orbitsoundkotlin.data.EmotionRepository
 import com.g22.orbitsoundkotlin.data.FacialEmotionAnalyzer
-import com.g22.orbitsoundkotlin.data.FirestoreEmotionRepository
+import com.g22.orbitsoundkotlin.data.OfflineFirstEmotionRepository
 import com.g22.orbitsoundkotlin.models.EmotionModel
+import com.g22.orbitsoundkotlin.utils.SyncEventManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -22,8 +24,9 @@ import kotlinx.coroutines.withContext
 
 class StellarEmotionsViewModel(
     private val userId: String,
-    private val repository: EmotionRepository = FirestoreEmotionRepository(),
-    private val context: Context? = null
+    private val context: Context,
+    private val repository: EmotionRepository = OfflineFirstEmotionRepository(context),
+    private val emotionLogFactory: EmotionLogFactory = DefaultEmotionLogFactory
 ) : ViewModel() {
     private val TAG = "StellarEmotionsViewModel"
 
@@ -39,6 +42,45 @@ class StellarEmotionsViewModel(
     private val _isAnalyzingEmotion = MutableStateFlow(false)
     val isAnalyzingEmotion: StateFlow<Boolean> = _isAnalyzingEmotion.asStateFlow()
 
+    init {
+        // Escuchar eventos de sincronización en segundo plano
+        observeSyncEvents()
+
+        // Verificar si hubo sincronizaciones recientes mientras la app estaba cerrada
+        checkRecentSync()
+    }
+
+    private fun checkRecentSync() {
+        viewModelScope.launch {
+            val lastSyncTime = SyncEventManager.getLastSyncTime(context)
+            val lastSyncCount = SyncEventManager.getLastSyncCount(context)
+
+            // Si hubo una sincronización en los últimos 10 segundos, mostrar el toast
+            if (lastSyncTime > 0 && System.currentTimeMillis() - lastSyncTime < 10_000L && lastSyncCount > 0) {
+                _event.emit(Event.ShowSuccess("Emotions successfully logged ($lastSyncCount synced to cloud)"))
+                // Limpiar para no mostrar de nuevo
+                SyncEventManager.saveLastSyncTime(context, 0)
+            }
+        }
+    }
+
+    private fun observeSyncEvents() {
+        viewModelScope.launch {
+            SyncEventManager.emotionSyncEvents.collect { event ->
+                when (event) {
+                    is SyncEventManager.EmotionSyncEvent.SyncSuccess -> {
+                        Log.d(TAG, "Received sync success event: ${event.count} emotions synced")
+                        _event.emit(Event.ShowSuccess("Emotions successfully logged (${event.count} synced to cloud)"))
+                    }
+                    is SyncEventManager.EmotionSyncEvent.SyncFailure -> {
+                        Log.e(TAG, "Received sync failure event: ${event.error}")
+                        // Opcionalmente mostrar error, pero no es crítico ya que se reintentará
+                    }
+                }
+            }
+        }
+    }
+
     fun onPhotoCaptured(uri: Uri) {
         Log.d(TAG, "Photo captured: $uri")
         _capturedPhotoUri.value = uri
@@ -47,13 +89,6 @@ class StellarEmotionsViewModel(
     }
 
     private fun analyzeEmotionFromPhoto(uri: Uri) {
-        if (context == null) {
-            Log.e(TAG, "Context is null, cannot analyze emotion")
-            viewModelScope.launch {
-                _event.emit(Event.ShowError("Unable to analyze emotion: context not available"))
-            }
-            return
-        }
 
         // Launch on Main dispatcher (viewModelScope default) for UI state management
         viewModelScope.launch {
@@ -117,26 +152,26 @@ class StellarEmotionsViewModel(
         try {
             Log.d(TAG, "Logging detected emotion: ${emotionModel.name} with source: ${emotionModel.source}")
 
-            // Perform database operations on IO dispatcher
-            val result = withContext(Dispatchers.IO) {
-                val firestoreRepo = repository as? FirestoreEmotionRepository
-                    ?: throw IllegalStateException("Repository must be FirestoreEmotionRepository")
+            // Verificar estado de la red antes de guardar
+            val isOnline = (repository as? OfflineFirstEmotionRepository)?.isNetworkAvailable() ?: true
 
-                val emotionLog = firestoreRepo.createEmotionLog(userId, listOf(emotionModel))
-                repository.logEmotions(userId, emotionLog)
-            }
+            val emotionLog = emotionLogFactory.createEmotionLog(userId, listOf(emotionModel))
+            val result = repository.logEmotions(userId, emotionLog)
 
             if (result.isSuccess) {
                 Log.d(TAG, "Successfully logged detected emotion")
                 _uiState.value = UiState.Success
+                _event.emit(Event.EmotionDetected(emotionModel.name))
 
-                // Emit events in parallel using async for better performance
-                val emotionDetectedJob = viewModelScope.async { _event.emit(Event.EmotionDetected(emotionModel.name)) }
-                val navigateJob = viewModelScope.async { _event.emit(Event.NavigateNext) }
+                // Mostrar mensaje apropiado según el estado de la red
+                if (isOnline) {
+                    _event.emit(Event.ShowSuccess("Emoción registrada exitosamente"))
+                } else {
+                    _event.emit(Event.ShowOfflineSuccess("Emoción guardada. Se sincronizará cuando vuelva la conexión"))
+                }
 
-                // Wait for both emissions to complete
-                emotionDetectedJob.await()
-                navigateJob.await()
+                // Notify navigation - the emotion is saved (locally if offline, will sync later)
+                _event.emit(Event.NavigateNext)
             } else {
                 val exception = result.exceptionOrNull()
                 Log.e(TAG, "Failed to log detected emotion", exception)
@@ -154,69 +189,59 @@ class StellarEmotionsViewModel(
     fun onReadyToShipClicked(selectedEmotions: List<EmotionModel>) {
         Log.d(TAG, "Ready to ship clicked with ${selectedEmotions.size} emotions")
 
-        // Perform validation checks
-        viewModelScope.launch {
-            // Run validations on Default dispatcher (CPU-bound)
-            val validationResult = withContext(Dispatchers.Default) {
-                when {
-                    selectedEmotions.isEmpty() -> ValidationResult.EmptyEmotions
-                    userId.isBlank() -> ValidationResult.EmptyUserId
-                    else -> ValidationResult.Valid
-                }
+        if (selectedEmotions.isEmpty()) {
+            viewModelScope.launch {
+                _event.emit(Event.ShowError("Please select at least one emotion"))
             }
+            return
+        }
 
-            when (validationResult) {
-                ValidationResult.EmptyEmotions -> {
-                    _event.emit(Event.ShowError("Please select at least one emotion"))
-                    return@launch
-                }
-                ValidationResult.EmptyUserId -> {
-                    Log.e(TAG, "User ID is blank, cannot proceed")
-                    _event.emit(Event.ShowError("User ID is missing, please log in again"))
-                    return@launch
-                }
-                ValidationResult.Valid -> {
-                    // Continue with logging
-                    _uiState.value = UiState.Loading
-                    try {
-                        Log.d(TAG, "Creating emotion log for user $userId")
+        if (userId.isBlank()) {
+            Log.e(TAG, "User ID is blank, cannot proceed")
+            viewModelScope.launch {
+                _event.emit(Event.ShowError("User ID is missing, please log in again"))
+            }
+            return
+        }
 
-                        // Perform database operations on IO dispatcher
-                        val result = withContext(Dispatchers.IO) {
-                            val firestoreRepo = repository as? FirestoreEmotionRepository
-                                ?: throw IllegalStateException("Repository must be FirestoreEmotionRepository")
+        viewModelScope.launch {
+            _uiState.value = UiState.Loading
+            try {
+                Log.d(TAG, "Creating emotion log for user $userId")
 
-                            // Create emotion log and save
-                            val emotionLog = firestoreRepo.createEmotionLog(userId, selectedEmotions)
-                            Log.d(TAG, "Created emotion log, calling repository")
-                            repository.logEmotions(userId, emotionLog)
-                        }
+                // Verificar estado de la red antes de guardar
+                val isOnline = (repository as? OfflineFirstEmotionRepository)?.isNetworkAvailable() ?: true
 
-                        if (result.isSuccess) {
-                            Log.d(TAG, "Successfully logged emotions")
-                            _uiState.value = UiState.Success
-                            _event.emit(Event.NavigateNext)
-                        } else {
-                            val exception = result.exceptionOrNull()
-                            Log.e(TAG, "Failed to log emotions", exception)
-                            val errorMessage = exception?.message ?: "Failed to save emotions"
-                            _uiState.value = UiState.Error(errorMessage)
-                            _event.emit(Event.ShowError(errorMessage))
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Exception in onReadyToShipClicked", e)
-                        _uiState.value = UiState.Error(e.message ?: "Unknown error")
-                        _event.emit(Event.ShowError(e.message ?: "Unknown error occurred"))
+                val emotionLog = emotionLogFactory.createEmotionLog(userId, selectedEmotions)
+                Log.d(TAG, "Created emotion log, calling repository")
+                val result = repository.logEmotions(userId, emotionLog)
+
+                if (result.isSuccess) {
+                    Log.d(TAG, "Successfully logged emotions (saved locally, will sync to cloud when online)")
+                    _uiState.value = UiState.Success
+
+                    // Mostrar mensaje apropiado según el estado de la red
+                    if (isOnline) {
+                        _event.emit(Event.ShowSuccess("Emotions successfully logged"))
+                    } else {
+                        _event.emit(Event.ShowOfflineSuccess("Emotions saved. They will be synchronized when back online"))
                     }
+
+                    // Navigate immediately - data is saved locally and will sync in background
+                    _event.emit(Event.NavigateNext)
+                } else {
+                    val exception = result.exceptionOrNull()
+                    Log.e(TAG, "Failed to log emotions", exception)
+                    val errorMessage = exception?.message ?: "Failed to save emotions"
+                    _uiState.value = UiState.Error(errorMessage)
+                    _event.emit(Event.ShowError(errorMessage))
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception in onReadyToShipClicked", e)
+                _uiState.value = UiState.Error(e.message ?: "Unknown error")
+                _event.emit(Event.ShowError(e.message ?: "Unknown error occurred"))
             }
         }
-    }
-
-    private enum class ValidationResult {
-        Valid,
-        EmptyEmotions,
-        EmptyUserId
     }
 
     sealed class UiState {
@@ -228,6 +253,8 @@ class StellarEmotionsViewModel(
 
     sealed class Event {
         data class ShowError(val message: String) : Event()
+        data class ShowSuccess(val message: String) : Event()
+        data class ShowOfflineSuccess(val message: String) : Event()
         data class EmotionDetected(val emotion: String) : Event()
         object NavigateNext : Event()
     }

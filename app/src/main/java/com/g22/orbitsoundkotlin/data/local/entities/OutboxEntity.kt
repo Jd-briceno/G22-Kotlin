@@ -37,7 +37,8 @@ enum class OutboxOperationType {
     UPSERT_INTERESTS,    // InterestSelection: actualizar intereses
     SEND_TELEMETRY,      // Login: enviar métricas
     QUICK_ACTION_LIKE,   // Home: like/quick action
-    UPDATE_MOOD          // Home: cambio de mood
+    UPDATE_MOOD,         // Home: cambio de mood
+    LOG_EMOTIONS         // StellarEmotions: registrar emociones
 }
 
 /**
