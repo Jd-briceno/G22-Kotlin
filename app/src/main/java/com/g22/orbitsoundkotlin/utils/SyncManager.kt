@@ -7,6 +7,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.g22.orbitsoundkotlin.data.workers.ActivityStatsSyncWorker
 import com.g22.orbitsoundkotlin.data.workers.InterestsSyncWorker
 import com.g22.orbitsoundkotlin.data.workers.ProfileReconciliationWorker
 import com.g22.orbitsoundkotlin.data.workers.SyncWorker
@@ -25,6 +26,7 @@ class SyncManager(private val context: Context) {
         private const val TELEMETRY_SYNC_WORK_NAME = "telemetry_sync_work"
         private const val RECONCILIATION_WORK_NAME = "profile_reconciliation_work"
         private const val INTERESTS_SYNC_WORK_NAME = "interests_sync_work"
+        private const val ACTIVITY_STATS_SYNC_WORK_NAME = "activity_stats_sync_work"
         private const val SYNC_INTERVAL_MINUTES = 15L
     }
 
@@ -67,6 +69,22 @@ class SyncManager(private val context: Context) {
             TELEMETRY_SYNC_WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             telemetryWork
+        )
+
+        // Worker de Activity Stats (cada 15 minutos, mismo intervalo que sync general)
+        val activityStatsWork = PeriodicWorkRequestBuilder<ActivityStatsSyncWorker>(
+            SYNC_INTERVAL_MINUTES,
+            TimeUnit.MINUTES,
+            5,
+            TimeUnit.MINUTES
+        )
+            .setConstraints(syncConstraints)
+            .build()
+
+        workManager.enqueueUniquePeriodicWork(
+            ACTIVITY_STATS_SYNC_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            activityStatsWork
         )
     }
 

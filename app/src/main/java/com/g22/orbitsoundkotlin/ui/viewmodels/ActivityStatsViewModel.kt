@@ -1,7 +1,9 @@
 package com.g22.orbitsoundkotlin.ui.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.g22.orbitsoundkotlin.data.repositories.ActivityStatsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,27 +14,30 @@ import kotlinx.coroutines.launch
  * ViewModel para ActivityStatsScreen.
  * 
  * Maneja el estado de la UI y la lógica de presentación.
- * La lógica de negocio (procesamiento de datos) se implementará en el bloque FEATURE.
+ * Usa ActivityStatsRepository para obtener datos reales desde Room.
+ * 
+ * CONCURRENCIA: Todas las operaciones pesadas corren en viewModelScope.launch
+ * (el Repository maneja Dispatchers.IO internamente)
  */
 data class ActivityStatsUiState(
     val selectedPeriod: ActivityStatsPeriod = ActivityStatsPeriod.LAST_24H,
     val isLoading: Boolean = false,
     val error: String? = null,
     
-    // Stats simples (dummy data por ahora - se conectará a FEATURE)
-    val sessionsCount: Int = 0,
-    val totalTimeMinutes: Int = 0,
-    val mostCommonAction: String = "",
+    // Journal Timeline
+    val journalTimeline: List<ActivityStatsRepository.JournalDaySummary> = emptyList(),
+    val selectedTimelineDate: Long = System.currentTimeMillis(),
+    val isLoadingTimeline: Boolean = false,
     
-    // Recent activity (dummy data por ahora)
+    // Recent activity (mantener)
     val recentActivities: List<ActivityItem> = emptyList(),
     
-    // Journal state
+    // Journal state (mantener)
     val selectedDate: Long = System.currentTimeMillis(), // Timestamp del día seleccionado
     val entriesOfSelectedDate: List<JournalEntry> = emptyList(),
     val availableDates: List<Long> = emptyList(), // Fechas que tienen entradas
     
-    // Journal editor state
+    // Journal editor state (mantener)
     val isEditingEntry: Boolean = false,
     val editingEntryId: String? = null,
     val editorText: String = "",
@@ -71,39 +76,165 @@ data class JournalEntry(
     val time: String // Formato: "8:03 PM"
 )
 
-class ActivityStatsViewModel : ViewModel() {
+class ActivityStatsViewModel(
+    private val repository: ActivityStatsRepository,
+    private val userId: String,
+    private val userEmail: String?
+) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ActivityStatsUiState())
     val uiState: StateFlow<ActivityStatsUiState> = _uiState.asStateFlow()
     
-    // Dummy storage: mapa de fecha (timestamp del inicio del día) -> lista de entradas
-    private val journalEntriesByDate = mutableMapOf<Long, MutableList<JournalEntry>>()
+    private val TAG = "ActivityStatsViewModel"
     
     init {
-        // TODO: Cargar datos reales desde Repository cuando se implemente la FEATURE
-        loadDummyData()
-        initializeDummyJournalEntries()
+        // Cargar datos iniciales (NO timeline en init para evitar crashes)
+        viewModelScope.launch {
+            try {
+                loadRecentActivity(ActivityStatsPeriod.LAST_24H)
+                loadJournalForDate(System.currentTimeMillis())
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading initial data", e)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = e.message ?: "Error loading data"
+                    )
+                }
+            }
+        }
     }
     
     /**
-     * Cambia el período seleccionado.
+     * Carga la timeline de los últimos 30 días.
+     * Se llama explícitamente desde la UI, NO en init.
+     */
+    fun loadJournalTimeline() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingTimeline = true) }
+            try {
+                val timeline = repository.getJournalTimeline(userId, daysBack = 30)
+                _uiState.update {
+                    it.copy(
+                        journalTimeline = timeline,
+                        isLoadingTimeline = false
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading journal timeline", e)
+                _uiState.update {
+                    it.copy(
+                        journalTimeline = emptyList(),
+                        isLoadingTimeline = false
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Selecciona un día desde la timeline y carga sus entradas.
+     */
+    fun selectTimelineDate(dateTimestamp: Long) {
+        _uiState.update {
+            it.copy(selectedTimelineDate = dateTimestamp, selectedDate = dateTimestamp)
+        }
+        viewModelScope.launch {
+            loadJournalForDate(dateTimestamp)
+        }
+    }
+    
+    /**
+     * Cambia el período seleccionado y recarga datos.
      */
     fun selectPeriod(period: ActivityStatsPeriod) {
-        _uiState.update { it.copy(selectedPeriod = period) }
-        // TODO: Recargar datos para el nuevo período desde Repository
-        loadDummyData()
+        _uiState.update { 
+            it.copy(
+                selectedPeriod = period,
+                isLoading = true,
+                error = null
+            )
+        }
+        
+        viewModelScope.launch {
+            try {
+                loadRecentActivity(period)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading data for period: ${period.displayName}", e)
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = e.message ?: "Error loading data"
+                    )
+                }
+            }
+        }
+    }
+    
+    
+    /**
+     * Carga la actividad reciente para un período.
+     */
+    private suspend fun loadRecentActivity(period: ActivityStatsPeriod) {
+        try {
+            val activities = repository.getRecentActivity(userId, userEmail, period)
+            _uiState.update {
+                it.copy(
+                    recentActivities = activities,
+                    isLoading = false
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading recent activity", e)
+            throw e
+        }
     }
     
     /**
      * Selecciona una fecha para mostrar sus entradas.
      */
     fun selectDate(dateTimestamp: Long) {
-        val dayStart = getDayStartTimestamp(dateTimestamp)
         _uiState.update {
             it.copy(
-                selectedDate = dayStart,
-                entriesOfSelectedDate = journalEntriesByDate[dayStart]?.toList() ?: emptyList()
+                selectedDate = getDayStartTimestamp(dateTimestamp),
+                isLoading = true
             )
+        }
+        
+        viewModelScope.launch {
+            try {
+                loadJournalForDate(dateTimestamp)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading journal for date", e)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = e.message ?: "Error loading journal"
+                    )
+                }
+            }
+        }
+    }
+    
+    /**
+     * Carga las entradas del journal para una fecha.
+     */
+    private suspend fun loadJournalForDate(dateTimestamp: Long) {
+        try {
+            val entries = repository.getJournalEntriesForDate(userId, dateTimestamp)
+            val availableDates = repository.getAvailableJournalDates(userId)
+            
+            _uiState.update {
+                it.copy(
+                    entriesOfSelectedDate = entries,
+                    availableDates = availableDates,
+                    isLoading = false
+                )
+            }
+            Log.d(TAG, "✅ Journal loaded: ${entries.size} entries for date")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading journal", e)
+            throw e
         }
     }
     
@@ -204,31 +335,41 @@ class ActivityStatsViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingEntry = true) }
             
-            // Simular guardado
-            kotlinx.coroutines.delay(300)
-            
-            if (editingEntryId != null) {
-                // Editar entrada existente
-                updateEntry(selectedDate, editingEntryId, text)
-            } else {
-                // Crear nueva entrada
-                addEntry(selectedDate, text)
-            }
-            
-            // Actualizar estado
-            val entries = journalEntriesByDate[selectedDate]?.toList() ?: emptyList()
-            val availableDates = journalEntriesByDate.keys.toList()
-            
-            _uiState.update {
-                it.copy(
-                    isSavingEntry = false,
-                    isEditingEntry = false,
-                    editingEntryId = null,
-                    editorText = "",
-                    editorCharacterCount = 0,
-                    entriesOfSelectedDate = entries,
-                    availableDates = availableDates
-                )
+            try {
+                if (editingEntryId != null) {
+                    // Editar entrada existente
+                    val success = repository.updateJournalEntry(userId, editingEntryId, text)
+                    if (!success) {
+                        throw Exception("Failed to update entry")
+                    }
+                    Log.d(TAG, "✅ Journal entry updated: $editingEntryId")
+                } else {
+                    // Crear nueva entrada
+                    repository.addJournalEntry(userId, selectedDate, text)
+                    Log.d(TAG, "✅ Journal entry created")
+                }
+                
+                // Recargar entradas del día y timeline
+                loadJournalForDate(selectedDate)
+                loadJournalTimeline()
+                
+                _uiState.update {
+                    it.copy(
+                        isSavingEntry = false,
+                        isEditingEntry = false,
+                        editingEntryId = null,
+                        editorText = "",
+                        editorCharacterCount = 0
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving journal entry", e)
+                _uiState.update {
+                    it.copy(
+                        isSavingEntry = false,
+                        error = e.message ?: "Error saving entry"
+                    )
+                }
             }
         }
     }
@@ -237,97 +378,28 @@ class ActivityStatsViewModel : ViewModel() {
      * Elimina una entrada.
      */
     fun deleteEntry(entryId: String) {
-        val selectedDate = _uiState.value.selectedDate
-        val entries = journalEntriesByDate[selectedDate] ?: return
-        
-        entries.removeAll { it.id == entryId }
-        
-        // Si no quedan entradas, remover la fecha de availableDates
-        if (entries.isEmpty()) {
-            journalEntriesByDate.remove(selectedDate)
-        }
-        
-        // Actualizar estado
-        val updatedEntries = journalEntriesByDate[selectedDate]?.toList() ?: emptyList()
-        val availableDates = journalEntriesByDate.keys.toList()
-        
-        _uiState.update {
-            it.copy(
-                entriesOfSelectedDate = updatedEntries,
-                availableDates = availableDates
-            )
-        }
-    }
-    
-    /**
-     * Agrega una nueva entrada al día especificado.
-     */
-    private fun addEntry(dateTimestamp: Long, text: String) {
-        val dayStart = getDayStartTimestamp(dateTimestamp)
-        val entryId = "entry_${System.currentTimeMillis()}"
-        val timestamp = System.currentTimeMillis()
-        
-        val entry = JournalEntry(
-            id = entryId,
-            date = formatDate(dayStart),
-            text = text,
-            timestamp = timestamp,
-            time = formatTime(timestamp)
-        )
-        
-        val entries = journalEntriesByDate.getOrPut(dayStart) { mutableListOf() }
-        entries.add(entry)
-        entries.sortByDescending { it.timestamp } // Más recientes primero
-    }
-    
-    /**
-     * Actualiza una entrada existente.
-     */
-    private fun updateEntry(dateTimestamp: Long, entryId: String, newText: String) {
-        val dayStart = getDayStartTimestamp(dateTimestamp)
-        val entries = journalEntriesByDate[dayStart] ?: return
-        
-        val index = entries.indexOfFirst { it.id == entryId }
-        if (index >= 0) {
-            val oldEntry = entries[index]
-            entries[index] = oldEntry.copy(
-                text = newText,
-                timestamp = System.currentTimeMillis() // Actualizar timestamp
-            )
-            entries.sortByDescending { it.timestamp }
+        viewModelScope.launch {
+            try {
+                val success = repository.deleteJournalEntry(userId, entryId)
+                if (!success) {
+                    throw Exception("Failed to delete entry")
+                }
+                
+                Log.d(TAG, "✅ Journal entry deleted: $entryId")
+                
+                // Recargar entradas del día y timeline
+                val selectedDate = _uiState.value.selectedDate
+                loadJournalForDate(selectedDate)
+                loadJournalTimeline()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting journal entry", e)
+                _uiState.update {
+                    it.copy(error = e.message ?: "Error deleting entry")
+                }
+            }
         }
     }
     
-    /**
-     * Inicializa algunas entradas dummy para desarrollo.
-     */
-    private fun initializeDummyJournalEntries() {
-        val today = System.currentTimeMillis()
-        val yesterday = today - (24 * 60 * 60 * 1000L)
-        val twoDaysAgo = yesterday - (24 * 60 * 60 * 1000L)
-        
-        // Entrada de hoy
-        addEntry(today, "Today I discovered some amazing lofi tracks that helped me focus while studying. The ambient sounds really improved my productivity.")
-        
-        // Entrada de ayer
-        addEntry(yesterday, "Yesterday was a great day for music discovery. Found several new artists that I'm excited to explore more.")
-        
-        // Entrada de hace dos días
-        addEntry(twoDaysAgo, "Started the week with a fresh playlist. Music really sets the mood for the day ahead.")
-        
-        // Actualizar estado inicial
-        val dayStart = getDayStartTimestamp(today)
-        val entries = journalEntriesByDate[dayStart]?.toList() ?: emptyList()
-        val availableDates = journalEntriesByDate.keys.toList()
-        
-        _uiState.update {
-            it.copy(
-                selectedDate = dayStart,
-                entriesOfSelectedDate = entries,
-                availableDates = availableDates
-            )
-        }
-    }
     
     /**
      * Obtiene el timestamp del inicio del día (00:00:00).
@@ -342,89 +414,5 @@ class ActivityStatsViewModel : ViewModel() {
         return calendar.timeInMillis
     }
     
-    /**
-     * Formatea una fecha para mostrar.
-     */
-    private fun formatDate(timestamp: Long): String {
-        val calendar = java.util.Calendar.getInstance()
-        calendar.timeInMillis = timestamp
-        val today = java.util.Calendar.getInstance()
-        val yesterday = java.util.Calendar.getInstance().apply {
-            add(java.util.Calendar.DAY_OF_YEAR, -1)
-        }
-        
-        return when {
-            isSameDay(calendar, today) -> "Today"
-            isSameDay(calendar, yesterday) -> "Yesterday"
-            else -> {
-                val dayOfWeek = calendar.get(java.util.Calendar.DAY_OF_WEEK)
-                val month = calendar.get(java.util.Calendar.MONTH)
-                val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
-                val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-                val monthNames = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-                "${dayNames[dayOfWeek - 1]} · ${monthNames[month]} $day"
-            }
-        }
-    }
-    
-    /**
-     * Formatea una hora para mostrar.
-     */
-    private fun formatTime(timestamp: Long): String {
-        val calendar = java.util.Calendar.getInstance()
-        calendar.timeInMillis = timestamp
-        val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
-        val minute = calendar.get(java.util.Calendar.MINUTE)
-        val amPm = if (hour < 12) "AM" else "PM"
-        val displayHour = when {
-            hour == 0 -> 12
-            hour > 12 -> hour - 12
-            else -> hour
-        }
-        return String.format("%d:%02d %s", displayHour, minute, amPm)
-    }
-    
-    /**
-     * Verifica si dos calendarios representan el mismo día.
-     */
-    private fun isSameDay(cal1: java.util.Calendar, cal2: java.util.Calendar): Boolean {
-        return cal1.get(java.util.Calendar.YEAR) == cal2.get(java.util.Calendar.YEAR) &&
-                cal1.get(java.util.Calendar.DAY_OF_YEAR) == cal2.get(java.util.Calendar.DAY_OF_YEAR)
-    }
-    
-    /**
-     * Carga datos dummy para desarrollo.
-     * TODO: Reemplazar con carga real desde Repository cuando se implemente la FEATURE.
-     */
-    private fun loadDummyData() {
-        _uiState.update {
-            it.copy(
-                sessionsCount = 12,
-                totalTimeMinutes = 135, // 2h 15m
-                mostCommonAction = "Searching music",
-                recentActivities = listOf(
-                    ActivityItem(
-                        id = "1",
-                        dateTime = "Tue · 8:03 PM",
-                        summary = "You searched for 'lofi beats' and played 3 tracks",
-                        stats = listOf(
-                            ActivityStatChip("searches", 3),
-                            ActivityStatChip("plays", 2),
-                            ActivityStatChip("favorites", 1)
-                        )
-                    ),
-                    ActivityItem(
-                        id = "2",
-                        dateTime = "Tue · 6:45 PM",
-                        summary = "You explored recommendations and saved 2 tracks",
-                        stats = listOf(
-                            ActivityStatChip("recommendations", 5),
-                            ActivityStatChip("saves", 2)
-                        )
-                    )
-                ),
-            )
-        }
-    }
 }
 
