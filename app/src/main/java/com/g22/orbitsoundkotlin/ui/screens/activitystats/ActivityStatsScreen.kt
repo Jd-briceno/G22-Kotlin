@@ -14,8 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -60,11 +64,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.g22.orbitsoundkotlin.ui.viewmodels.ActivityStatsViewModel
 import com.g22.orbitsoundkotlin.ui.viewmodels.ActivityStatsPeriod
+import com.g22.orbitsoundkotlin.ui.viewmodels.ActivityStatsViewModelFactory
 import kotlinx.coroutines.launch
 
 /**
@@ -76,7 +83,10 @@ fun ActivityStatsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val viewModel: ActivityStatsViewModel = viewModel()
+    val context = LocalContext.current
+    val viewModel: ActivityStatsViewModel = viewModel(
+        factory = ActivityStatsViewModelFactory(context)
+    )
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -113,52 +123,74 @@ fun ActivityStatsScreen(
                     .padding(horizontal = 20.dp, vertical = 20.dp)
             ) {
                 // Header
-                ActivityStatsHeader(
-                    selectedPeriod = uiState.selectedPeriod,
-                    onPeriodSelected = viewModel::selectPeriod
-                )
+                ActivityStatsHeader()
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                // Stats Summary Cards
-                ActivityStatsSummaryCards(
-                    sessionsCount = uiState.sessionsCount,
-                    totalTimeMinutes = uiState.totalTimeMinutes,
-                    mostCommonAction = uiState.mostCommonAction
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Recent Activity Section
-                RecentActivitySection(
-                    activities = uiState.recentActivities
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Journal Section (completo)
-                JournalSection(
-                    uiState = uiState,
-                    viewModel = viewModel,
-                    onEntryClick = { entry ->
-                        selectedEntryForView = entry
-                    }
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-            
-            // Editor de entrada (nuevo/editar)
-            if (uiState.isEditingEntry) {
-                JournalEntryEditor(
+                // Card elegante para nueva entrada (siempre visible)
+                NewEntryCard(
                     text = uiState.editorText,
                     characterCount = uiState.editorCharacterCount,
                     maxCharacters = uiState.maxJournalCharacters,
                     isSaving = uiState.isSavingEntry,
+                    isEditing = uiState.isEditingEntry,
                     onTextChange = viewModel::updateEditorText,
                     onSave = viewModel::saveEntry,
-                    onCancel = viewModel::closeEntryEditor
+                    onCancel = viewModel::closeEntryEditor,
+                    onStartEditing = { viewModel.openNewEntryEditor() }
                 )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Navegación rápida con flechas
+                JournalDateSelector(
+                    selectedDate = uiState.selectedDate,
+                    availableDates = uiState.availableDates,
+                    onPreviousDay = { viewModel.navigateToPreviousDay() },
+                    onNextDay = { viewModel.navigateToNextDay() }
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Journal Timeline Calendar (carga lazy cuando se muestra la pantalla)
+                LaunchedEffect(Unit) {
+                    viewModel.loadJournalTimeline()
+                }
+                
+                JournalTimelineCalendar(
+                    timeline = uiState.journalTimeline,
+                    selectedDate = uiState.selectedTimelineDate,
+                    isLoading = uiState.isLoadingTimeline,
+                    onDateSelected = viewModel::selectTimelineDate
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Entradas del día seleccionado (abajo del calendario)
+                if (uiState.entriesOfSelectedDate.isNotEmpty()) {
+                    Text(
+                        text = "Entries for selected day",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                
+                JournalEntriesList(
+                    entries = uiState.entriesOfSelectedDate,
+                    onEntryClick = { entry ->
+                        selectedEntryForView = entry
+                    },
+                    onEdit = { viewModel.openEditEntryEditor(it.id) },
+                    onDelete = { entry ->
+                        viewModel.deleteEntry(entry.id)
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
             }
             
             // Bottom sheet para ver entrada completa
@@ -190,79 +222,27 @@ fun ActivityStatsScreen(
 }
 
 @Composable
-private fun ActivityStatsHeader(
-    selectedPeriod: ActivityStatsPeriod,
-    onPeriodSelected: (ActivityStatsPeriod) -> Unit
-) {
-    Column {
-        Text(
-            text = "Activity Stats",
-            style = TextStyle(
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+private fun ActivityStatsHeader() {
+    Text(
+        text = "Journaling Therapy",
+        style = TextStyle(
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
         )
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        Text(
-            text = "See your recent activity and reflect on your day.",
-            style = TextStyle(
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.7f)
-            )
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        PeriodSelectorChips(
-            selectedPeriod = selectedPeriod,
-            onPeriodSelected = onPeriodSelected
-        )
-    }
+    )
 }
 
 @Composable
-private fun ActivityStatsSummaryCards(
-    sessionsCount: Int,
-    totalTimeMinutes: Int,
-    mostCommonAction: String
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        ActivityStatCard(
-            title = "Sessions in this period",
-            value = sessionsCount.toString(),
-            icon = Icons.Outlined.PlayArrow,
-            modifier = Modifier.weight(1f)
-        )
-        
-        ActivityStatCard(
-            title = "Total time in app",
-            value = formatTime(totalTimeMinutes),
-            icon = Icons.Outlined.AccessTime,
-            modifier = Modifier.weight(1f)
-        )
-        
-        ActivityStatCard(
-            title = "Most common action",
-            value = mostCommonAction,
-            icon = Icons.Outlined.MusicNote,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun RecentActivitySection(
-    activities: List<com.g22.orbitsoundkotlin.ui.viewmodels.ActivityItem>
+private fun JournalTimelineCalendar(
+    timeline: List<com.g22.orbitsoundkotlin.data.repositories.ActivityStatsRepository.JournalDaySummary>,
+    selectedDate: Long,
+    isLoading: Boolean,
+    onDateSelected: (Long) -> Unit
 ) {
     Column {
         Text(
-            text = "Recent activity",
+            text = "Journal Calendar",
             style = TextStyle(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
@@ -272,7 +252,7 @@ private fun RecentActivitySection(
         
         Spacer(modifier = Modifier.height(12.dp))
         
-        if (activities.isEmpty()) {
+        if (isLoading) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -281,7 +261,24 @@ private fun RecentActivitySection(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "No recent activity. Start using the app to see your stats here.",
+                    text = "Loading calendar...",
+                    modifier = Modifier.padding(16.dp),
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = 0.6f)
+                    )
+                )
+            }
+        } else if (timeline.isEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF24292E)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = "No journal entries yet. Start writing to see your calendar.",
                     modifier = Modifier.padding(16.dp),
                     style = TextStyle(
                         fontSize = 14.sp,
@@ -290,73 +287,342 @@ private fun RecentActivitySection(
                 )
             }
         } else {
-            activities.forEach { activity ->
-                ActivityListItem(activity = activity)
+            // Calendario mensual
+            val calendar = java.util.Calendar.getInstance()
+            val currentMonth = calendar.get(java.util.Calendar.MONTH)
+            val currentYear = calendar.get(java.util.Calendar.YEAR)
+            
+            // Filtrar timeline para el mes actual
+            val currentMonthTimeline = timeline.filter { day ->
+                val dayCalendar = java.util.Calendar.getInstance()
+                dayCalendar.timeInMillis = day.dateTimestamp
+                dayCalendar.get(java.util.Calendar.MONTH) == currentMonth &&
+                dayCalendar.get(java.util.Calendar.YEAR) == currentYear
+            }
+            
+            val countMap = currentMonthTimeline.associate { 
+                val dayCalendar = java.util.Calendar.getInstance()
+                dayCalendar.timeInMillis = it.dateTimestamp
+                dayCalendar.get(java.util.Calendar.DAY_OF_MONTH) to it.entryCount
+            }
+            
+            // Construir calendario del mes actual
+            val monthCalendar = java.util.Calendar.getInstance()
+            monthCalendar.set(currentYear, currentMonth, 1)
+            val firstDayOfWeek = monthCalendar.get(java.util.Calendar.DAY_OF_WEEK)
+            val daysInMonth = monthCalendar.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+            
+            // Nombres de días de la semana
+            val dayNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+            
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF24292E)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    // Header del mes
+                    val monthNames = listOf("January", "February", "March", "April", "May", "June",
+                                           "July", "August", "September", "October", "November", "December")
+                    Text(
+                        text = "${monthNames[currentMonth]} $currentYear",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        ),
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    
+                    // Días de la semana
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        dayNames.forEach { dayName ->
+                            Text(
+                                text = dayName,
+                                style = TextStyle(
+                                    fontSize = 10.sp,
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Días del mes
+                    var dayCounter = 1
+                    var weekCounter = 0
+                    
+                    while (dayCounter <= daysInMonth || weekCounter == 0) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            for (dayOfWeek in 1..7) {
+                                if (weekCounter == 0 && dayOfWeek < firstDayOfWeek) {
+                                    // Espacios vacíos antes del primer día
+                                    Spacer(modifier = Modifier.weight(1f))
+                                } else if (dayCounter <= daysInMonth) {
+                                    val dayNumber = dayCounter
+                                    val entryCount = countMap[dayNumber] ?: 0
+                                    val isSelected = isSameDay(
+                                        dayNumber,
+                                        currentMonth,
+                                        currentYear,
+                                        selectedDate
+                                    )
+                                    
+                                    // Calcular timestamp del día
+                                    val dayCalendar = java.util.Calendar.getInstance()
+                                    dayCalendar.set(currentYear, currentMonth, dayNumber)
+                                    dayCalendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+                                    dayCalendar.set(java.util.Calendar.MINUTE, 0)
+                                    dayCalendar.set(java.util.Calendar.SECOND, 0)
+                                    dayCalendar.set(java.util.Calendar.MILLISECOND, 0)
+                                    val dayTimestamp = dayCalendar.timeInMillis
+                                    
+                                    CalendarDayCell(
+                                        dayNumber = dayNumber,
+                                        entryCount = entryCount,
+                                        isSelected = isSelected,
+                                        onClick = { onDateSelected(dayTimestamp) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    dayCounter++
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                        weekCounter++
+                        if (dayCounter > daysInMonth) break
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun JournalSection(
-    uiState: com.g22.orbitsoundkotlin.ui.viewmodels.ActivityStatsUiState,
-    viewModel: ActivityStatsViewModel,
-    onEntryClick: (com.g22.orbitsoundkotlin.ui.viewmodels.JournalEntry) -> Unit
+private fun CalendarDayCell(
+    dayNumber: Int,
+    entryCount: Int,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(4.dp)
+            .border(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = if (isSelected) Color(0xFF5099BA) else Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .background(
+                color = if (isSelected) Color(0xFF5099BA).copy(alpha = 0.2f) else Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Journal",
+                text = dayNumber.toString(),
                 style = TextStyle(
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    fontSize = 14.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) Color(0xFF5099BA) else Color.White
                 )
             )
             
-            Button(
-                onClick = { viewModel.openNewEntryEditor() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF5099BA),
-                    contentColor = Color.White
-                ),
-                modifier = Modifier.height(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("New entry", style = TextStyle(fontSize = 12.sp))
+            if (entryCount > 0) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = Color(0xFF5099BA),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = entryCount.toString(),
+                        style = TextStyle(
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                }
             }
         }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Selector de día
-        JournalDateSelector(
-            selectedDate = uiState.selectedDate,
-            availableDates = uiState.availableDates,
-            onPreviousDay = { viewModel.navigateToPreviousDay() },
-            onNextDay = { viewModel.navigateToNextDay() }
+    }
+}
+
+private fun isSameDay(dayNumber: Int, month: Int, year: Int, timestamp: Long): Boolean {
+    val calendar = java.util.Calendar.getInstance()
+    calendar.timeInMillis = timestamp
+    return calendar.get(java.util.Calendar.DAY_OF_MONTH) == dayNumber &&
+           calendar.get(java.util.Calendar.MONTH) == month &&
+           calendar.get(java.util.Calendar.YEAR) == year
+}
+
+@Composable
+private fun NewEntryCard(
+    text: String,
+    characterCount: Int,
+    maxCharacters: Int,
+    isSaving: Boolean,
+    isEditing: Boolean,
+    onTextChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+    onStartEditing: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF5099BA).copy(alpha = 0.15f)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(
+            width = 1.5.dp,
+            color = Color(0xFF5099BA).copy(alpha = 0.5f)
         )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Lista de entradas del día
-        JournalEntriesList(
-            entries = uiState.entriesOfSelectedDate,
-            onEntryClick = onEntryClick,
-            onEdit = { viewModel.openEditEntryEditor(it.id) },
-            onDelete = { entry ->
-                viewModel.deleteEntry(entry.id)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            if (!isEditing) {
+                // Estado inicial: mostrar placeholder y botón para empezar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onStartEditing),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = null,
+                        tint = Color(0xFF5099BA),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Write a new entry...",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            color = Color(0xFF5099BA).copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                }
+            } else {
+                // Estado de edición: mostrar TextField y controles
+                Text(
+                    text = "New Entry",
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF5099BA)
+                    )
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                TextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
+                    placeholder = {
+                        Text(
+                            text = "What's on your mind?",
+                            color = Color.White.copy(alpha = 0.5f)
+                        )
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color(0xFF010B19).copy(alpha = 0.5f),
+                        unfocusedContainerColor = Color(0xFF010B19).copy(alpha = 0.5f),
+                        focusedIndicatorColor = Color(0xFF5099BA),
+                        unfocusedIndicatorColor = Color(0xFF5099BA).copy(alpha = 0.5f),
+                        cursorColor = Color(0xFF5099BA)
+                    ),
+                    textStyle = TextStyle(
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        lineHeight = 20.sp
+                    ),
+                    maxLines = 6,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "$characterCount/$maxCharacters",
+                        style = TextStyle(
+                            fontSize = 11.sp,
+                            color = Color(0xFF5099BA).copy(alpha = 0.7f)
+                        )
+                    )
+                    
+                    Row {
+                        TextButton(
+                            onClick = onCancel,
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = Color(0xFF5099BA).copy(alpha = 0.7f)
+                            )
+                        ) {
+                            Text("Cancel", style = TextStyle(fontSize = 14.sp))
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Button(
+                            onClick = onSave,
+                            enabled = text.trim().isNotEmpty() && !isSaving,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF5099BA),
+                                contentColor = Color.White,
+                                disabledContainerColor = Color(0xFF5099BA).copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            if (isSaving) {
+                                Text("Saving...", style = TextStyle(fontSize = 14.sp))
+                            } else {
+                                Text("Save", style = TextStyle(fontSize = 14.sp))
+                            }
+                        }
+                    }
+                }
             }
-        )
+        }
     }
 }
 

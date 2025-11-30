@@ -44,5 +44,15 @@ interface OutboxDao {
 
     @Query("DELETE FROM outbox")
     suspend fun clearAllOperations()
+    
+    /**
+     * Obtiene todas las operaciones (sincronizadas y no sincronizadas) en un rango de tiempo.
+     * Útil para procesar historial completo de actividad.
+     */
+    @Query("SELECT * FROM outbox WHERE createdAt >= :startTime AND createdAt <= :endTime")
+    suspend fun getOperationsInTimeRange(
+        startTime: Long,
+        endTime: Long
+    ): List<OutboxEntity>
 }
 
