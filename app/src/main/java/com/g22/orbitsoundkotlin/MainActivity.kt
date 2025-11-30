@@ -1,13 +1,18 @@
 package com.g22.orbitsoundkotlin
 
 import com.g22.orbitsoundkotlin.ui.viewmodels.StellarEmotionsViewModel
+import android.Manifest
 import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,6 +83,20 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 
 class MainActivity : ComponentActivity() {
+    
+    private var pendingAchievementNavigation: String? = null
+    
+    // Request notification permission launcher for Android 13+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            android.util.Log.d("MainActivity", "Notification permission granted")
+        } else {
+            android.util.Log.d("MainActivity", "Notification permission denied")
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -89,16 +108,82 @@ class MainActivity : ComponentActivity() {
         // ✅ CONECTIVIDAD EVENTUAL: Inicializar SyncManager para Workers periódicos
         SyncManager(this).startPeriodicSync()
         
+        // 🏆 Inicializar Achievement System
+        initializeAchievementSystem()
+        
+        // 🔔 Solicitar permiso de notificaciones (Android 13+)
+        requestNotificationPermission()
+        
+        // Handle deep link from notification
+        handleIntent(intent)
+        
         setContent {
             OrbitSoundKotlinTheme {
-                OrbitSoundApp()
+                OrbitSoundApp(
+                    pendingAchievementNavigation = pendingAchievementNavigation,
+                    onNavigationHandled = { pendingAchievementNavigation = null }
+                )
+            }
+        }
+    }
+    
+    /**
+     * Inicializar el sistema de achievements
+     */
+    private fun initializeAchievementSystem() {
+        val database = AppDatabase.getInstance(this)
+        val achievementRepo = com.g22.orbitsoundkotlin.data.repositories.AchievementRepository(database)
+        com.g22.orbitsoundkotlin.services.AchievementService.initialize(this, achievementRepo)
+        android.util.Log.d("MainActivity", "Achievement system initialized")
+    }
+    
+    /**
+     * Solicitar permiso de notificaciones en Android 13+
+     */
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    android.util.Log.d("MainActivity", "Notification permission already granted")
+                }
+                else -> {
+                    // Request permission
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
+    
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+    
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == "OPEN_ACHIEVEMENTS") {
+            val userId = intent.getStringExtra("userId")
+            val achievementId = intent.getStringExtra("achievementId")
+            
+            if (userId != null) {
+                pendingAchievementNavigation = userId
+                
+                // Track notification tap
+                if (achievementId != null) {
+                    MusicAnalytics.trackAchievementNotificationTapped(achievementId)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun OrbitSoundApp() {
+private fun OrbitSoundApp(
+    pendingAchievementNavigation: String? = null,
+    onNavigationHandled: () -> Unit = {}
+) {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val authService = remember { AuthService.getInstance() }
@@ -131,6 +216,17 @@ private fun OrbitSoundApp() {
     }
 
     var destination by remember { mutableStateOf<AppDestination>(AppDestination.Login) }
+    
+    // Handle deep link navigation after authentication
+    LaunchedEffect(pendingAchievementNavigation, destination) {
+        if (pendingAchievementNavigation != null && destination is AppDestination.Home) {
+            val currentUser = (destination as AppDestination.Home).user
+            if (currentUser.id == pendingAchievementNavigation) {
+                destination = AppDestination.Achievements(currentUser)
+                onNavigationHandled()
+            }
+        }
+    }
     var isAuthenticating by remember { mutableStateOf(false) }
 
     fun runAuthRequest(
@@ -161,6 +257,12 @@ private fun OrbitSoundApp() {
     }
 
     fun handleAuthSuccess(success: AuthResult.Success) {
+        // Check First Login achievement
+        val database = AppDatabase.getInstance(context)
+        val achievementRepo = com.g22.orbitsoundkotlin.data.repositories.AchievementRepository(database)
+        val achievementService = com.g22.orbitsoundkotlin.services.AchievementService.getInstance(context, achievementRepo)
+        achievementService.checkFirstLogin(success.user.id)
+        
         destination = if (success.requiresProfileCompletion) {
             AppDestination.Interests(success.user)
         } else {
@@ -352,6 +454,9 @@ private fun OrbitSoundApp() {
                         },
                         onNavigateToCaptainsLog = {
                             destination = AppDestination.CaptainsLog(current.user)
+                        },
+                        onNavigateToAres = {
+                            destination = AppDestination.Ares(current.user)
                         }
                     )
                 }
@@ -359,7 +464,11 @@ private fun OrbitSoundApp() {
             is AppDestination.StellarEmotions -> {
                 val context = LocalContext.current
                 val viewModel = remember {
-                    StellarEmotionsViewModel(userId = current.user.id, context = context)
+                    StellarEmotionsViewModel(
+                        userId = current.user.id,
+                        repository = com.g22.orbitsoundkotlin.data.OfflineFirstEmotionRepository(context),
+                        context = context
+                    )
                 }
                 StellarEmotionsScreen(
                     username = current.user.email?.split("@")?.firstOrNull() ?: "Captain",
@@ -413,8 +522,50 @@ private fun OrbitSoundApp() {
                 )
             }
             is AppDestination.Profile -> {
+                val database = AppDatabase.getInstance(context)
+                val profileViewModelFactory = com.g22.orbitsoundkotlin.ui.viewmodels.ProfileViewModelFactory(context, current.user.id)
+                val profileViewModel = androidx.lifecycle.viewmodel.compose.viewModel<com.g22.orbitsoundkotlin.ui.viewmodels.ProfileViewModel>(
+                    factory = profileViewModelFactory
+                )
+                
                 ProfileScreen(
+                    user = current.user,
                     onNavigateToHome = {
+                        destination = AppDestination.Home(current.user)
+                    },
+                    onNavigateToAchievements = {
+                        destination = AppDestination.Achievements(current.user)
+                    },
+                    viewModel = profileViewModel
+                )
+            }
+            
+            is AppDestination.Achievements -> {
+                val database = AppDatabase.getInstance(context)
+                val achievementsViewModelFactory = com.g22.orbitsoundkotlin.ui.viewmodels.AchievementsViewModelFactory(context, current.user.id)
+                val achievementsViewModel = androidx.lifecycle.viewmodel.compose.viewModel<com.g22.orbitsoundkotlin.ui.viewmodels.AchievementsViewModel>(
+                    factory = achievementsViewModelFactory
+                )
+                
+                com.g22.orbitsoundkotlin.ui.screens.achievements.AchievementsScreen(
+                    viewModel = achievementsViewModel,
+                    onBack = {
+                        destination = AppDestination.Profile(current.user)
+                    }
+                )
+            }
+            is AppDestination.Ares -> {
+                val context = LocalContext.current
+                val factory = remember {
+                    com.g22.orbitsoundkotlin.ui.viewmodels.AresViewModelFactory(
+                        context = context,
+                        userId = current.user.id
+                    )
+                }
+                val aresViewModel: com.g22.orbitsoundkotlin.ui.viewmodels.AresViewModel = viewModel(factory = factory)
+                com.g22.orbitsoundkotlin.ui.screens.ares.AresScreen(
+                    viewModel = aresViewModel,
+                    onBack = {
                         destination = AppDestination.Home(current.user)
                     }
                 )
@@ -508,6 +659,8 @@ private sealed interface AppDestination {
     data class Library(val user: AuthUser) : AppDestination
     data class Profile(val user: AuthUser) : AppDestination
     data class CaptainsLog(val user: AuthUser) : AppDestination
+    data class Ares(val user: AuthUser) : AppDestination
+    data class Achievements(val user: AuthUser) : AppDestination
 }
 
 /**

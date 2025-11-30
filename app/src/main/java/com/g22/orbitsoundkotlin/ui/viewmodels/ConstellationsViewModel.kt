@@ -121,6 +121,7 @@ class ConstellationsViewModel : ViewModel() {
 
     /**
      * Request an emotion suggestion from the AI model
+     * Utiliza caché automático del servicio EmotionSuggestionService
      */
     private fun requestSuggestion(emotion: String) {
         _suggestionLoading.value = true
@@ -136,11 +137,12 @@ class ConstellationsViewModel : ViewModel() {
             _suggestion.value = result
             _suggestionLoading.value = false
 
+
             if (!suggestionEmitted && result != null) {
                 Log.d("ConstellationsViewModel", "Suggestion ready: $result")
                 suggestionEmitted = true
             } else if (result == null) {
-                Log.w("ConstellationsViewModel", "No valid suggestion received from AI")
+                Log.w("ConstellationsViewModel", "No valid suggestion received from AI - may be using cached data")
             }
         }
     }

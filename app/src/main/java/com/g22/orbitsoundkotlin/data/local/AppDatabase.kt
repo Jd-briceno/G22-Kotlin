@@ -15,6 +15,8 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
  * Version 2: Added Library cache entities (LibrarySectionCacheEntity, SearchHistoryEntity)
  * Version 3: Added SessionActivityLogEntity for session activity journal feature
  * Version 4: Added Activity Stats entities (UserDailyActivitySummaryEntity, JournalEntryEntity)
+ * Version 5: Added AresCacheEntity for AI emotional recommendations cache
+ * Version 5: Added AchievementEntity for user achievements system
  */
 @Database(
     entities = [
@@ -27,19 +29,22 @@ import com.g22.orbitsoundkotlin.data.local.entities.*
         // Library cache entities (v2)
         LibrarySectionCacheEntity::class,
         SearchHistoryEntity::class,
+        // Emotion logs (v4)
+        EmotionLogEntity::class,
         // Session activity logs (v3)
         SessionActivityLogEntity::class,
         // Activity Stats entities (v4)
         UserDailyActivitySummaryEntity::class,
-        JournalEntryEntity::class
+        JournalEntryEntity::class,
+        // Ares AI cache (v5)
+        AresCacheEntity::class,
+        // Achievements (v5)
+        AchievementEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
-@TypeConverters(
-    StringListConverter::class, 
-    JsonConverter::class
-)
+@TypeConverters(StringListConverter::class, JsonConverter::class, EmotionListConverter::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun userDao(): UserDao
@@ -49,9 +54,15 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun weatherCacheDao(): WeatherCacheDao
     abstract fun outboxDao(): OutboxDao
     abstract fun libraryCacheDao(): LibraryCacheDao
+    abstract fun emotionLogDao(): EmotionLogDao
     abstract fun sessionActivityLogDao(): SessionActivityLogDao
+    // Activity Stats DAOs (v4)
     abstract fun userDailyActivitySummaryDao(): UserDailyActivitySummaryDao
     abstract fun journalEntryDao(): JournalEntryDao
+    // Ares AI cache DAO (v5)
+    abstract fun aresCacheDao(): AresCacheDao
+    // Achievements DAO (v5)
+    abstract fun achievementDao(): AchievementDao
 
     companion object {
         @Volatile

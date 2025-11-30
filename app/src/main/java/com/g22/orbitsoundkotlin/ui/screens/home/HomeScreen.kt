@@ -48,7 +48,8 @@ fun HomeScreen(
     onNavigateToStellarEmotions: () -> Unit,
     onNavigateToLibrary: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToCaptainsLog: () -> Unit = {}
+    onNavigateToCaptainsLog: () -> Unit = {},
+    onNavigateToAres: () -> Unit = {}
 ) {
     val context = LocalContext.current
     // ✅ CONECTIVIDAD EVENTUAL: Inyectar Context al HomeViewModel
@@ -183,7 +184,8 @@ fun HomeScreen(
                 artist = "Evan Call",
                 onPrev = {},
                 onPlayPause = {},
-                onNext = {}
+                onNext = {},
+                onAresClick = onNavigateToAres
             )
 
             Spacer(Modifier.height(24.dp))
